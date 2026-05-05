@@ -35,7 +35,11 @@ const app = express()
 const portSource = process.env.PORT ?? process.env.RAILWAY_TCP_PROXY_PORT ?? process.env.REPORT_PORT ?? '8787'
 const parsedPort = Number(portSource)
 const port = Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : 8787
-const host = process.env.HOST ?? (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1')
+const requestedHost = process.env.HOST
+const host =
+  process.env.RAILWAY_SERVICE_NAME || requestedHost === '[::]' || requestedHost === '::'
+    ? '0.0.0.0'
+    : (requestedHost ?? (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1'))
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(__dirname, '..', '..')
 const storageRoot = path.resolve(process.env.REPORT_STORAGE_DIR ?? path.resolve(projectRoot, 'storage'))
@@ -254,6 +258,7 @@ app.listen(port, host, () => {
     JSON.stringify({
       event: 'report_server_started',
       host,
+      requestedHost: requestedHost ?? null,
       port,
       portSource,
       envPort: process.env.PORT ?? null,
