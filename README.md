@@ -29,13 +29,22 @@ npm run report:start
 Lokálně report server běží na `http://127.0.0.1:8787` a vystavuje:
 
 - `GET /health`
+- `GET /api/status`
 - `GET /api/cases`
 - `POST /api/cases`
 - `PATCH /api/cases/:id`
 - `GET /api/reports`
+- `GET /api/reports/sample.pdf`
 - `POST /api/reports/pdf`
 
 Webová aplikace používá tento server pro školní case board a serverový PDF export. Případy žáků se ukládají do `storage/cases.json`. Vygenerované PDF reporty se ukládají do `storage/reports/YYYY-MM/` a každý export zapíše auditní řádek do `storage/report-audit.jsonl`. Když report server neběží, aplikace spadne zpět na tiskové okno prohlížeče.
+
+Produkční smoke testy:
+
+```bash
+curl https://profesni-mapa.vercel.app/api/status
+curl -I https://profesni-mapa.vercel.app/api/reports/sample.pdf
+```
 
 ## MCP datový server
 

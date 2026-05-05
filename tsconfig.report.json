@@ -18,6 +18,7 @@
     "src/data.ts",
     "src/marketSignals.ts",
     "src/schoolPrograms.ts",
+    "src/scoring.ts",
     "src/reporting.ts",
     "src/reportServer.ts"
   ]

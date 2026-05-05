@@ -1,14 +1,18 @@
 import cors from 'cors'
 import express from 'express'
 import { randomUUID } from 'node:crypto'
-import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { z } from 'zod'
 
 import { caseStatuses, type CaseStatus, type StudentCase, type StudentCaseInput } from './cases.js'
+import { careers, defaultProfile } from './data.js'
+import { getMarketSignal, mpsvMarketSource } from './marketSignals.js'
 import { buildReportHtml, type ReportPayload } from './reporting.js'
+import { getSchoolPrograms } from './schoolPrograms.js'
+import { scoreCareers } from './scoring.js'
 
 const reportRequestSchema = z.object({
   profile: z.object({
@@ -131,6 +135,64 @@ async function writeCases(cases: StudentCase[]) {
   await writeFile(casesPath, JSON.stringify(cases, null, 2), 'utf8')
 }
 
+async function checkStorageWritable() {
+  const probePath = path.resolve(storageRoot, `.probe-${randomUUID()}.txt`)
+
+  try {
+    await mkdir(storageRoot, { recursive: true })
+    await writeFile(probePath, 'ok', 'utf8')
+    const probe = await readFile(probePath, 'utf8')
+    await rm(probePath, { force: true })
+    return probe === 'ok'
+  } catch {
+    await rm(probePath, { force: true }).catch(() => undefined)
+    return false
+  }
+}
+
+async function readReportCount() {
+  try {
+    const auditLog = await readFile(auditPath, 'utf8')
+    return auditLog
+      .trim()
+      .split('\n')
+      .filter(Boolean).length
+  } catch {
+    return 0
+  }
+}
+
+function buildSampleReportPayload(): ReportPayload {
+  const profile = {
+    ...defaultProfile,
+    studentName: 'Demo žák',
+    region: 'praha' as const,
+    zipCode: 'Praha',
+  }
+  const matches = scoreCareers(profile, careers)
+  const selected = matches[0]
+
+  return {
+    profile: {
+      studentName: profile.studentName,
+    },
+    license: {
+      schoolName: 'Demo škola',
+      schoolId: 'demo-production-smoke',
+      counselorSeats: 1,
+      studentProfiles: 30,
+      reportsIncluded: 30,
+      plan: 'pilot',
+    },
+    selected,
+    topThree: matches.slice(0, 3),
+    selectedRegionLabel: 'Hlavní město Praha',
+    selectedMarketSignal: getMarketSignal(selected.career.czIscoCode, profile.region),
+    selectedSchoolPrograms: getSchoolPrograms(selected.career, profile.region),
+    mpsvSourceUrl: mpsvMarketSource.sourceUrl,
+  }
+}
+
 app.get('/', (_request, response) => {
   response.status(200).json({ ok: true, service: 'profesni-mapa-reporting' })
 })
@@ -141,6 +203,27 @@ app.get('/health', (_request, response) => {
 
 app.get('/favicon.ico', (_request, response) => {
   response.status(204).end()
+})
+
+app.get('/api/status', async (_request, response) => {
+  const [cases, storageWritable, reportCount] = await Promise.all([readCases(), checkStorageWritable(), readReportCount()])
+
+  response.json({
+    ok: true,
+    service: 'profesni-mapa-reporting',
+    storageWritable,
+    storageConfigured: Boolean(process.env.REPORT_STORAGE_DIR),
+    caseCount: cases.length,
+    reportCount,
+    runtime: {
+      host,
+      requestedHost: requestedHost ?? null,
+      port,
+      portSource,
+      nodeEnv: process.env.NODE_ENV ?? null,
+      railwayService: process.env.RAILWAY_SERVICE_NAME ?? null,
+    },
+  })
 })
 
 app.get('/api/cases', async (_request, response) => {
@@ -213,6 +296,18 @@ app.get('/api/reports', async (_request, response) => {
   } catch {
     response.json({ reports: [] })
   }
+})
+
+app.get('/api/reports/sample.pdf', async (_request, response) => {
+  const generatedAt = new Date()
+  const payload = buildSampleReportPayload()
+  const html = buildReportHtml({ ...payload, generatedAt: generatedAt.toISOString() })
+  const pdf = await renderPdf(html)
+
+  response.setHeader('Content-Type', 'application/pdf')
+  response.setHeader('Content-Disposition', 'inline; filename="profesni-mapa-sample-report.pdf"')
+  response.setHeader('X-Report-Id', `sample-${generatedAt.getTime()}`)
+  response.send(pdf)
 })
 
 app.post('/api/reports/pdf', async (request, response) => {
