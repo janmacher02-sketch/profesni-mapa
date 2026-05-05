@@ -33,7 +33,8 @@ const reportRequestSchema = z.object({
 
 const app = express()
 const portSource = process.env.PORT ?? process.env.RAILWAY_TCP_PROXY_PORT ?? process.env.REPORT_PORT ?? '8787'
-const port = Number(portSource)
+const parsedPort = Number(portSource)
+const port = Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : 8787
 const host = process.env.HOST ?? (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(__dirname, '..', '..')
@@ -247,6 +248,9 @@ app.listen(port, host, () => {
       host,
       port,
       portSource,
+      envPort: process.env.PORT ?? null,
+      railwayTcpProxyPort: process.env.RAILWAY_TCP_PROXY_PORT ?? null,
+      reportPort: process.env.REPORT_PORT ?? null,
       nodeEnv: process.env.NODE_ENV ?? null,
       railwayService: process.env.RAILWAY_SERVICE_NAME ?? null,
     }),
