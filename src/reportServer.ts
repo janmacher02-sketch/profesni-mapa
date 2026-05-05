@@ -50,6 +50,13 @@ const allowedOrigins = (process.env.CORS_ORIGIN ?? '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean)
+const defaultProductionOrigins = [
+  'https://profesni-mapa.vercel.app',
+  'https://profesni-mapa-machys-projects-42993293.vercel.app',
+  'https://profesni-mapa-janmacher02-sketch-machys-projects-42993293.vercel.app',
+  'https://profesnimapa.cz',
+  'https://app.profesnimapa.cz',
+]
 
 const caseStatusSchema = z.enum(caseStatuses)
 
@@ -74,7 +81,7 @@ const casePatchSchema = z.object({
 
 app.use(
   cors({
-    origin: [/^http:\/\/127\.0\.0\.1:\d+$/, /^http:\/\/localhost:\d+$/, ...allowedOrigins],
+    origin: [/^http:\/\/127\.0\.0\.1:\d+$/, /^http:\/\/localhost:\d+$/, ...defaultProductionOrigins, ...allowedOrigins],
     exposedHeaders: ['X-Report-Id', 'X-Report-Path'],
   }),
 )
