@@ -120,8 +120,16 @@ async function writeCases(cases: StudentCase[]) {
   await writeFile(casesPath, JSON.stringify(cases, null, 2), 'utf8')
 }
 
+app.get('/', (_request, response) => {
+  response.status(200).json({ ok: true, service: 'profesni-mapa-reporting' })
+})
+
 app.get('/health', (_request, response) => {
   response.json({ ok: true, service: 'profesni-mapa-reporting' })
+})
+
+app.get('/favicon.ico', (_request, response) => {
+  response.status(204).end()
 })
 
 app.get('/api/cases', async (_request, response) => {
