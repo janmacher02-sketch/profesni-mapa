@@ -21,4 +21,4 @@ ENV REPORT_STORAGE_DIR=/data
 
 EXPOSE 8787
 
-CMD ["npm", "run", "report:start"]
+CMD ["node", "build/report/reportServer.js"]

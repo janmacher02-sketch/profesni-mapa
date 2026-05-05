@@ -32,7 +32,8 @@ const reportRequestSchema = z.object({
 })
 
 const app = express()
-const port = Number(process.env.PORT ?? process.env.REPORT_PORT ?? 8787)
+const portSource = process.env.PORT ?? process.env.RAILWAY_TCP_PROXY_PORT ?? process.env.REPORT_PORT ?? '8787'
+const port = Number(portSource)
 const host = process.env.HOST ?? (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(__dirname, '..', '..')
@@ -240,5 +241,14 @@ app.post('/api/reports/pdf', async (request, response) => {
 })
 
 app.listen(port, host, () => {
-  console.log(`Profesni mapa reporting server listening on http://${host}:${port}`)
+  console.log(
+    JSON.stringify({
+      event: 'report_server_started',
+      host,
+      port,
+      portSource,
+      nodeEnv: process.env.NODE_ENV ?? null,
+      railwayService: process.env.RAILWAY_SERVICE_NAME ?? null,
+    }),
+  )
 })
