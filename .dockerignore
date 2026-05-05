@@ -1,0 +1,13 @@
+node_modules
+build
+dist
+storage
+logs
+*.log
+*.local
+.git
+.github
+.vscode
+.idea
+Dockerfile*
+README.md

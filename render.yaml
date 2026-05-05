@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: profesni-mapa-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.report
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: REPORT_STORAGE_DIR
+        value: /data

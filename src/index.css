@@ -1,0 +1,50 @@
+:root {
+  --accent: #1c7a6b;
+  --canvas: #f8faf8;
+  --ink: #101817;
+  --line: #dce5df;
+  --line-strong: #cbd8d1;
+  --muted: #62706a;
+  --surface: #ffffff;
+  --success: #2a9d6f;
+  --warn: #b95f33;
+  --wash: #eef4f0;
+  --font: 'Aptos', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
+  color: var(--ink);
+  background: var(--canvas);
+  font-family: var(--font);
+  font-synthesis: none;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100dvh;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(28, 122, 107, 0.18);
+}
