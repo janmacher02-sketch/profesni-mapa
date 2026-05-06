@@ -51,8 +51,6 @@ import { licensePricing, type ReportPayload, type SchoolLicense } from './report
 import { formatCurrency, formatMonths, scoreCareers, type CareerMatch } from './scoring'
 
 const REPORT_API_URL = (import.meta.env.VITE_REPORT_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://127.0.0.1:8787'
-const PILOT_ACCESS_CODE = (import.meta.env.VITE_PILOT_ACCESS_CODE as string | undefined)?.trim() ?? ''
-const ACCESS_STORAGE_KEY = 'profesni-mapa-pilot-access'
 
 function reportApiUrl(path: string) {
   return `${REPORT_API_URL}${path.startsWith('/') ? path : `/${path}`}`
@@ -329,10 +327,8 @@ function App() {
   const [studentCases, setStudentCases] = useState<StudentCase[]>([])
   const [accessCode, setAccessCode] = useState('')
   const [accessError, setAccessError] = useState('')
-  const [hasPilotAccess, setHasPilotAccess] = useState(() => {
-    if (!PILOT_ACCESS_CODE) return true
-    return window.localStorage.getItem(ACCESS_STORAGE_KEY) === 'granted'
-  })
+  const [hasPilotAccess, setHasPilotAccess] = useState(false)
+  const [accessChecked, setAccessChecked] = useState(false)
   const matches = useMemo(() => scoreCareers(profile, careers), [profile])
   const [selectedId, setSelectedId] = useState(defaultProfile.interest === 'building' ? 'elektromechanik' : matches[0].career.id)
   const selected = matches.find((match) => match.career.id === selectedId) ?? matches[0]
@@ -363,11 +359,32 @@ function App() {
   const priorityGaps = coverageRows.flatMap((segment) => segment.missing.slice(0, 3).map((missing) => `${missing} / ${segment.label}`)).slice(0, 10)
 
   useEffect(() => {
-    if (!hasPilotAccess) return
+    async function checkSession() {
+      try {
+        const response = await fetch(reportApiUrl('/api/auth/session'), {
+          credentials: 'include',
+        })
+        if (!response.ok) throw new Error(`Auth service returned ${response.status}`)
+        const data = (await response.json()) as { authenticated: boolean }
+        setHasPilotAccess(data.authenticated)
+      } catch {
+        setHasPilotAccess(false)
+      } finally {
+        setAccessChecked(true)
+      }
+    }
+
+    void checkSession()
+  }, [])
+
+  useEffect(() => {
+    if (!accessChecked || !hasPilotAccess) return
 
     async function loadCases() {
       try {
-        const response = await fetch(reportApiUrl('/api/cases'))
+        const response = await fetch(reportApiUrl('/api/cases'), {
+          credentials: 'include',
+        })
         if (!response.ok) throw new Error(`Case service returned ${response.status}`)
         const data = (await response.json()) as { cases: StudentCase[] }
         setStudentCases(data.cases)
@@ -377,7 +394,7 @@ function App() {
     }
 
     void loadCases()
-  }, [hasPilotAccess])
+  }, [accessChecked, hasPilotAccess])
 
   function updateProfile<T extends keyof StudentProfile>(key: T, value: StudentProfile[T]) {
     setProfile((current) => ({ ...current, [key]: value }))
@@ -445,6 +462,7 @@ function App() {
       const response = await fetch(reportApiUrl('/api/cases'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       })
       if (!response.ok) throw new Error(`Case service returned ${response.status}`)
@@ -463,6 +481,7 @@ function App() {
       const response = await fetch(reportApiUrl(`/api/cases/${caseId}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ status }),
       })
       if (!response.ok) throw new Error(`Case service returned ${response.status}`)
@@ -481,6 +500,7 @@ function App() {
     try {
       const response = await fetch(reportApiUrl(`/api/cases/${caseId}`), {
         method: 'DELETE',
+        credentials: 'include',
       })
       if (!response.ok) throw new Error(`Case service returned ${response.status}`)
       setStudentCases((current) => current.filter((studentCase) => studentCase.id !== caseId))
@@ -505,6 +525,7 @@ function App() {
       const response = await fetch(reportApiUrl('/api/reports/pdf'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       })
 
@@ -550,6 +571,39 @@ function App() {
     window.setTimeout(() => setPdfStatus('idle'), 1800)
   }
 
+  async function loginWithPilotCode() {
+    try {
+      const response = await fetch(reportApiUrl('/api/auth/login'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code: accessCode }),
+      })
+
+      if (!response.ok) throw new Error(`Auth service returned ${response.status}`)
+
+      setHasPilotAccess(true)
+      setAccessError('')
+    } catch {
+      setAccessError('Neplatný pilotní kód.')
+    }
+  }
+
+  if (!accessChecked) {
+    return (
+      <main className="access-shell">
+        <section className="access-panel" aria-label="Ověření přístupu">
+          <span className="brand-mark access-mark">
+            <LockKey size={24} weight="duotone" />
+          </span>
+          <p className="eyebrow">Pilotní provoz</p>
+          <h1>Ověřuji přístup.</h1>
+          <p>Kontroluji zabezpečenou pilotní session.</p>
+        </section>
+      </main>
+    )
+  }
+
   if (!hasPilotAccess) {
     return (
       <PilotAccessGate
@@ -559,16 +613,7 @@ function App() {
           setAccessCode(value)
           setAccessError('')
         }}
-        onSubmit={() => {
-          if (accessCode.trim() === PILOT_ACCESS_CODE) {
-            window.localStorage.setItem(ACCESS_STORAGE_KEY, 'granted')
-            setHasPilotAccess(true)
-            setAccessError('')
-            return
-          }
-
-          setAccessError('Neplatný pilotní kód.')
-        }}
+        onSubmit={loginWithPilotCode}
       />
     )
   }

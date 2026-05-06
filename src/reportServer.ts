@@ -1,6 +1,6 @@
 import cors from 'cors'
-import express from 'express'
-import { randomUUID } from 'node:crypto'
+import express, { type NextFunction, type Request, type Response } from 'express'
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import { appendFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -35,6 +35,10 @@ const reportRequestSchema = z.object({
   generatedAt: z.string().optional(),
 })
 
+const loginSchema = z.object({
+  code: z.string().min(1),
+})
+
 const app = express()
 const portSource = process.env.PORT ?? process.env.RAILWAY_TCP_PROXY_PORT ?? process.env.REPORT_PORT ?? '8787'
 const parsedPort = Number(portSource)
@@ -61,6 +65,11 @@ const defaultProductionOrigins = [
   'https://profesnimapa.cz',
   'https://app.profesnimapa.cz',
 ]
+const authCookieName = 'pm_pilot_session'
+const isProduction = process.env.NODE_ENV === 'production'
+const pilotAccessCode = process.env.PILOT_ACCESS_CODE?.trim() || (isProduction ? '' : 'PILOT2026')
+const sessionSecret = process.env.PILOT_SESSION_SECRET?.trim() || (isProduction ? randomUUID() : pilotAccessCode)
+const sessionMaxAgeSeconds = 60 * 60 * 12
 
 const caseStatusSchema = z.enum(caseStatuses)
 
@@ -86,10 +95,74 @@ const casePatchSchema = z.object({
 app.use(
   cors({
     origin: [/^http:\/\/127\.0\.0\.1:\d+$/, /^http:\/\/localhost:\d+$/, ...defaultProductionOrigins, ...allowedOrigins],
+    credentials: true,
     exposedHeaders: ['X-Report-Id', 'X-Report-Path'],
   }),
 )
 app.use(express.json({ limit: '4mb' }))
+
+function safeCompare(a: string, b: string) {
+  const left = Buffer.from(a)
+  const right = Buffer.from(b)
+  return left.length === right.length && timingSafeEqual(left, right)
+}
+
+function signSession(value: string) {
+  return createHmac('sha256', sessionSecret).update(value).digest('base64url')
+}
+
+function createSessionToken() {
+  const issuedAt = Date.now().toString()
+  return `${issuedAt}.${signSession(issuedAt)}`
+}
+
+function parseCookies(header: string | undefined) {
+  const cookies = new Map<string, string>()
+  if (!header) return cookies
+
+  for (const part of header.split(';')) {
+    const [rawName, ...rawValue] = part.trim().split('=')
+    if (!rawName || rawValue.length === 0) continue
+    cookies.set(rawName, decodeURIComponent(rawValue.join('=')))
+  }
+
+  return cookies
+}
+
+function isValidSessionToken(token: string | undefined) {
+  if (!token) return false
+  const [issuedAt, signature] = token.split('.')
+  if (!issuedAt || !signature) return false
+
+  const issuedAtNumber = Number(issuedAt)
+  if (!Number.isFinite(issuedAtNumber)) return false
+  if (Date.now() - issuedAtNumber > sessionMaxAgeSeconds * 1000) return false
+
+  return safeCompare(signature, signSession(issuedAt))
+}
+
+function hasPilotSession(request: Request) {
+  return isValidSessionToken(parseCookies(request.headers.cookie).get(authCookieName))
+}
+
+function setPilotSessionCookie(response: Response) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
+  response.setHeader('Set-Cookie', `${authCookieName}=${encodeURIComponent(createSessionToken())}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${sessionMaxAgeSeconds}${secure}`)
+}
+
+function clearPilotSessionCookie(response: Response) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
+  response.setHeader('Set-Cookie', `${authCookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure}`)
+}
+
+function requirePilotAccess(request: Request, response: Response, next: NextFunction) {
+  if (hasPilotSession(request)) {
+    next()
+    return
+  }
+
+  response.status(401).json({ error: 'Pilot access required' })
+}
 
 function slugify(value: string) {
   return value
@@ -226,12 +299,33 @@ app.get('/api/status', async (_request, response) => {
   })
 })
 
-app.get('/api/cases', async (_request, response) => {
+app.get('/api/auth/session', (request, response) => {
+  response.json({ authenticated: hasPilotSession(request) })
+})
+
+app.post('/api/auth/login', (request, response) => {
+  const parsed = loginSchema.safeParse(request.body)
+
+  if (!parsed.success || !safeCompare(parsed.data.code.trim(), pilotAccessCode)) {
+    response.status(401).json({ error: 'Invalid pilot code' })
+    return
+  }
+
+  setPilotSessionCookie(response)
+  response.json({ authenticated: true })
+})
+
+app.post('/api/auth/logout', (_request, response) => {
+  clearPilotSessionCookie(response)
+  response.json({ authenticated: false })
+})
+
+app.get('/api/cases', requirePilotAccess, async (_request, response) => {
   const cases = await readCases()
   response.json({ cases: cases.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) })
 })
 
-app.post('/api/cases', async (request, response) => {
+app.post('/api/cases', requirePilotAccess, async (request, response) => {
   const parsed = caseInputSchema.safeParse(request.body)
 
   if (!parsed.success) {
@@ -253,7 +347,7 @@ app.post('/api/cases', async (request, response) => {
   response.status(201).json({ case: studentCase })
 })
 
-app.patch('/api/cases/:id', async (request, response) => {
+app.patch('/api/cases/:id', requirePilotAccess, async (request, response) => {
   const parsed = casePatchSchema.safeParse(request.body)
 
   if (!parsed.success) {
@@ -282,7 +376,7 @@ app.patch('/api/cases/:id', async (request, response) => {
   response.json({ case: updated })
 })
 
-app.delete('/api/cases/:id', async (request, response) => {
+app.delete('/api/cases/:id', requirePilotAccess, async (request, response) => {
   const cases = await readCases()
   const remainingCases = cases.filter((studentCase) => studentCase.id !== request.params.id)
 
@@ -295,7 +389,7 @@ app.delete('/api/cases/:id', async (request, response) => {
   response.status(204).end()
 })
 
-app.get('/api/reports', async (_request, response) => {
+app.get('/api/reports', requirePilotAccess, async (_request, response) => {
   try {
     const auditLog = await readFile(auditPath, 'utf8')
     const reports = auditLog
@@ -323,7 +417,7 @@ app.get('/api/reports/sample.pdf', async (_request, response) => {
   response.send(pdf)
 })
 
-app.post('/api/reports/pdf', async (request, response) => {
+app.post('/api/reports/pdf', requirePilotAccess, async (request, response) => {
   const parsed = reportRequestSchema.safeParse(request.body)
 
   if (!parsed.success) {

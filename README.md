@@ -97,7 +97,6 @@ Ve Vercelu nastav proměnnou:
 
 ```bash
 VITE_REPORT_API_URL=https://api.profesnimapa.cz
-VITE_PILOT_ACCESS_CODE=PILOT2026
 ```
 
 Pro staging může být například:
@@ -117,6 +116,8 @@ NODE_ENV=production
 HOST=0.0.0.0
 CORS_ORIGIN=https://app.profesnimapa.cz,https://profesnimapa.cz
 REPORT_STORAGE_DIR=/data
+PILOT_ACCESS_CODE=PILOT2026
+PILOT_SESSION_SECRET=<dlouhy-nahodny-secret>
 ```
 
 `PORT` obvykle dodá Railway automaticky. Pro trvalé reporty a případy přidej persistent volume namountovaný do `/data`.
