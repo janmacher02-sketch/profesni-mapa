@@ -5,17 +5,77 @@
 }
 
 .access-shell {
-  display: grid;
+  display: block;
   min-height: 100dvh;
-  place-items: center;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(245, 250, 248, 0.94)),
     var(--canvas);
-  padding: 24px;
+  padding: 30px 24px;
+}
+
+.access-landing {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 18px;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.access-hero,
+.public-guide,
+.pilot-offer-grid article {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 24px 80px rgba(25, 45, 40, 0.08);
+}
+
+.access-hero {
+  padding: 34px;
+}
+
+.public-brand {
+  padding: 0;
+  margin-bottom: 30px;
+}
+
+.access-hero h1 {
+  max-width: 760px;
+  margin: 10px 0 14px;
+  color: var(--ink);
+  font-size: clamp(36px, 6vw, 72px);
+  line-height: 0.98;
+}
+
+.access-hero p {
+  max-width: 690px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.access-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.public-cta {
+  background: var(--surface);
+}
+
+.marketing-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 28px;
 }
 
 .access-panel {
-  width: min(100%, 520px);
+  align-self: start;
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
@@ -35,7 +95,8 @@
   text-transform: uppercase;
 }
 
-.access-panel h1 {
+.access-panel h1,
+.access-panel h2 {
   margin: 8px 0 12px;
   color: var(--ink);
   font-size: 30px;
@@ -68,6 +129,106 @@
   font-size: 13px;
   font-weight: 850;
   text-decoration: none;
+}
+
+.pilot-offer-grid {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.pilot-offer-grid article {
+  padding: 20px;
+}
+
+.pilot-offer-grid svg {
+  color: var(--accent);
+}
+
+.pilot-offer-grid h3 {
+  margin: 12px 0 7px;
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.pilot-offer-grid p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.public-guide {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  gap: 18px;
+  padding: 24px;
+}
+
+.public-guide h2,
+.pilot-guide h2 {
+  margin: 8px 0 0;
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1.18;
+}
+
+.public-guide ol,
+.pilot-guide ol {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public-guide li,
+.pilot-guide li {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfefd;
+  padding: 13px;
+}
+
+.public-guide li span,
+.pilot-guide li span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--wash);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.public-guide li strong,
+.public-guide li small,
+.pilot-guide li strong,
+.pilot-guide li small {
+  display: block;
+}
+
+.public-guide li strong,
+.pilot-guide li strong {
+  margin-top: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.public-guide li small,
+.pilot-guide li small {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .sidebar {
@@ -354,6 +515,23 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 18px;
+}
+
+.pilot-guide {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfefd;
+  box-shadow: 0 16px 48px -40px rgba(12, 28, 24, 0.52);
+  padding: 18px;
+}
+
+.pilot-guide ol {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .source-health-item {
@@ -1762,6 +1940,17 @@ select:focus {
 }
 
 @media (max-width: 1220px) {
+  .access-landing,
+  .public-guide,
+  .pilot-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .marketing-proof-grid,
+  .pilot-guide ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .work-grid,
   .planning-grid,
   .partner-strip,
@@ -1794,6 +1983,31 @@ select:focus {
 }
 
 @media (max-width: 860px) {
+  .access-shell {
+    padding: 16px;
+  }
+
+  .access-hero,
+  .access-panel,
+  .public-guide {
+    padding: 20px;
+  }
+
+  .access-hero h1 {
+    font-size: 40px;
+  }
+
+  .access-hero p {
+    font-size: 15px;
+  }
+
+  .marketing-proof-grid,
+  .pilot-offer-grid,
+  .public-guide ol,
+  .pilot-guide ol {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar {
     display: none;
   }

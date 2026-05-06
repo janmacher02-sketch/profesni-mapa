@@ -718,6 +718,35 @@ function App() {
             <OverviewCard icon={<UsersThree size={20} />} label="Reporty v licenci" value={license.reportsIncluded.toString()} note={licensePricing[license.plan].price} />
           </section>
 
+          <section className="pilot-guide" aria-label="Rychlý postup práce">
+            <div>
+              <p className="eyebrow">Rychlý postup</p>
+              <h2>Od profilu žáka k reportu pro rodiče za jednu poradenskou schůzku.</h2>
+            </div>
+            <ol>
+              <li>
+                <span>1</span>
+                <strong>Vyplň profil</strong>
+                <small>Zájem, kraj, mzda, typ práce a vzdělávací cesta.</small>
+              </li>
+              <li>
+                <span>2</span>
+                <strong>Porovnej TOP profese</strong>
+                <small>Zkontroluj shodu, mzdu, poptávku, školy a rizika.</small>
+              </li>
+              <li>
+                <span>3</span>
+                <strong>Ulož případ</strong>
+                <small>Zařaď žáka do poradenského workflow školy.</small>
+              </li>
+              <li>
+                <span>4</span>
+                <strong>Stáhni PDF</strong>
+                <small>Výstup použij pro rodiče, žáka nebo interní konzultaci.</small>
+              </li>
+            </ol>
+          </section>
+
           <section className="license-workspace" id="license" aria-label="Školní licence a reporty">
             <div className="license-card">
               <div className="panel-header">
@@ -1267,36 +1296,111 @@ function PilotAccessGate({
 }) {
   return (
     <main className="access-shell">
-      <section className="access-panel" aria-label="Pilotní přístup">
-        <span className="brand-mark access-mark">
-          <LockKey size={24} weight="duotone" />
-        </span>
-        <p className="eyebrow">Pilotní provoz</p>
-        <h1>Profesní mapa je uzamčená pro zapojené školy.</h1>
-        <p>
-          Vstup je určený pro poradce a školy v pilotu. Nepoužívej reálná citlivá data žáků, dokud nemá škola odsouhlasené
-          interní pravidla práce s daty.
-        </p>
-        <form
-          className="access-form"
-          onSubmit={(event) => {
-            event.preventDefault()
-            onSubmit()
-          }}
-        >
-          <label className="field">
-            <span>Pilotní kód</span>
-            <input value={accessCode} onChange={(event) => onAccessCodeChange(event.target.value)} autoFocus />
-          </label>
-          {accessError ? <strong className="access-error">{accessError}</strong> : null}
-          <button className="primary-button" type="submit">
-            Vstoupit do pilotu
-          </button>
-        </form>
-        <a className="sample-link" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer">
-          Otevřít anonymní ukázkový PDF report
-          <ArrowSquareOut size={14} />
-        </a>
+      <section className="access-landing" aria-label="Profesní mapa pilot">
+        <div className="access-hero">
+          <a className="brand-lockup public-brand" href="/" aria-label="Profesní mapa">
+            <span className="brand-mark">
+              <Compass size={21} weight="duotone" />
+            </span>
+            <span>
+              <strong>Profesní mapa</strong>
+              <small>Kariérové poradenství pro školy</small>
+            </span>
+          </a>
+          <p className="eyebrow">Pilot pro ZŠ a SŠ</p>
+          <h1>Datově podložené profesní cesty místo náhodných doporučení.</h1>
+          <p>
+            Webová pracovní plocha pro kariérové poradce. Spojuje profil žáka, regionální poptávku, obory škol a PDF report pro
+            rodiče do jednoho opakovatelného workflow.
+          </p>
+          <div className="access-actions">
+            <a className="primary-button" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer">
+              <FilePdf size={16} />
+              Ukázkový PDF report
+            </a>
+            <a className="text-button public-cta" href="mailto:janmacher02@gmail.com?subject=Pilot%20Profesni%20mapa">
+              Domluvit pilot
+              <ArrowSquareOut size={14} />
+            </a>
+          </div>
+          <div className="marketing-proof-grid" aria-label="Pilotní metriky">
+            <MetricTile icon={<Briefcase size={18} />} label="Profese" value={`${careers.length}+`} />
+            <MetricTile icon={<Database size={18} />} label="Zdroje" value="NSP / MPSV" />
+            <MetricTile icon={<FilePdf size={18} />} label="Výstup" value="PDF report" />
+            <MetricTile icon={<UsersThree size={18} />} label="Pilot" value="5 škol" />
+          </div>
+        </div>
+
+        <aside className="access-panel" aria-label="Pilotní přístup">
+          <span className="brand-mark access-mark">
+            <LockKey size={24} weight="duotone" />
+          </span>
+          <p className="eyebrow">Vstup pro zapojené školy</p>
+          <h2>Pracovní plocha je chráněná pilotním kódem.</h2>
+          <p>Nepoužívej reálná citlivá data žáků, dokud nemá škola odsouhlasené interní pravidla práce s daty.</p>
+          <form
+            className="access-form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              onSubmit()
+            }}
+          >
+            <label className="field">
+              <span>Pilotní kód</span>
+              <input value={accessCode} onChange={(event) => onAccessCodeChange(event.target.value)} autoFocus />
+            </label>
+            {accessError ? <strong className="access-error">{accessError}</strong> : null}
+            <button className="primary-button wide" type="submit">
+              Vstoupit do pilotu
+            </button>
+          </form>
+          <a className="sample-link" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer">
+            Otevřít anonymní ukázkový PDF report
+            <ArrowSquareOut size={14} />
+          </a>
+        </aside>
+
+        <section className="pilot-offer-grid" aria-label="Nabídka pro školy">
+          <article>
+            <CheckCircle size={19} weight="fill" />
+            <h3>Pro kariérové poradce</h3>
+            <p>Rychlé porovnání profesních cest podle zájmu, mzdy, vzdělání, regionu a rizik.</p>
+          </article>
+          <article>
+            <Buildings size={19} weight="duotone" />
+            <h3>Pro vedení školy</h3>
+            <p>Pilotní licence za 9 900 Kč ročně, 60 reportů, evaluace po 8 týdnech a jasný výstup pro rodiče.</p>
+          </article>
+          <article>
+            <SealCheck size={19} weight="duotone" />
+            <h3>Pro zřizovatele</h3>
+            <p>Přehled profesních mezer podle kraje a opora pro spolupráci škol, firem a poradenských služeb.</p>
+          </article>
+        </section>
+
+        <section className="public-guide" aria-label="Jak pilot probíhá">
+          <div>
+            <p className="eyebrow">Jak to škola použije</p>
+            <h2>Jednoduchý postup pro první pilotní hodinu</h2>
+          </div>
+          <ol>
+            <li>
+              <span>01</span>
+              <strong>Poradce zadá anonymní profil žáka</strong>
+              <small>Bez rodného čísla, adresy nebo citlivých osobních dat.</small>
+            </li>
+            <li>
+              <span>02</span>
+              <strong>Aplikace seřadí vhodné profesní cesty</strong>
+              <small>Výsledek kombinuje zájem, region, vzdělání, mzdu a dostupná data trhu práce.</small>
+            </li>
+            <li>
+              <span>03</span>
+              <strong>Škola uloží případ a stáhne PDF</strong>
+              <small>Report je připravený pro schůzku s rodiči nebo pro další práci poradce.</small>
+            </li>
+          </ol>
+        </section>
       </section>
     </main>
   )
