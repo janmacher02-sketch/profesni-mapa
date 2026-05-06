@@ -4,6 +4,72 @@
   color: var(--ink);
 }
 
+.access-shell {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(245, 250, 248, 0.94)),
+    var(--canvas);
+  padding: 24px;
+}
+
+.access-panel {
+  width: min(100%, 520px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 24px 80px rgba(25, 45, 40, 0.1);
+  padding: 30px;
+}
+
+.access-mark {
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.access-panel h1 {
+  margin: 8px 0 12px;
+  color: var(--ink);
+  font-size: 30px;
+  line-height: 1.18;
+}
+
+.access-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.access-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.access-error {
+  color: #ad1f1f;
+  font-size: 13px;
+}
+
+.sample-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 18px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -479,6 +545,15 @@
 
 .case-actions button:hover {
   border-color: var(--accent);
+}
+
+.case-actions button.danger {
+  color: #ad1f1f;
+}
+
+.case-actions button.danger:hover {
+  border-color: #ad1f1f;
+  background: #fff3f3;
 }
 
 .case-empty {

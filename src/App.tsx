@@ -17,6 +17,7 @@ import {
   FilePdf,
   ArrowSquareOut,
   GraduationCap,
+  LockKey,
   MagnifyingGlass,
   MapPin,
   Question,
@@ -24,6 +25,7 @@ import {
   SlidersHorizontal,
   Student,
   TrendUp,
+  Trash,
   UsersThree,
   WarningCircle,
   Wrench,
@@ -49,6 +51,8 @@ import { licensePricing, type ReportPayload, type SchoolLicense } from './report
 import { formatCurrency, formatMonths, scoreCareers, type CareerMatch } from './scoring'
 
 const REPORT_API_URL = (import.meta.env.VITE_REPORT_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://127.0.0.1:8787'
+const PILOT_ACCESS_CODE = (import.meta.env.VITE_PILOT_ACCESS_CODE as string | undefined)?.trim() ?? ''
+const ACCESS_STORAGE_KEY = 'profesni-mapa-pilot-access'
 
 function reportApiUrl(path: string) {
   return `${REPORT_API_URL}${path.startsWith('/') ? path : `/${path}`}`
@@ -323,6 +327,12 @@ function App() {
   const [pdfStatus, setPdfStatus] = useState<'idle' | 'ready'>('idle')
   const [caseSaveStatus, setCaseSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle')
   const [studentCases, setStudentCases] = useState<StudentCase[]>([])
+  const [accessCode, setAccessCode] = useState('')
+  const [accessError, setAccessError] = useState('')
+  const [hasPilotAccess, setHasPilotAccess] = useState(() => {
+    if (!PILOT_ACCESS_CODE) return true
+    return window.localStorage.getItem(ACCESS_STORAGE_KEY) === 'granted'
+  })
   const matches = useMemo(() => scoreCareers(profile, careers), [profile])
   const [selectedId, setSelectedId] = useState(defaultProfile.interest === 'building' ? 'elektromechanik' : matches[0].career.id)
   const selected = matches.find((match) => match.career.id === selectedId) ?? matches[0]
@@ -353,6 +363,8 @@ function App() {
   const priorityGaps = coverageRows.flatMap((segment) => segment.missing.slice(0, 3).map((missing) => `${missing} / ${segment.label}`)).slice(0, 10)
 
   useEffect(() => {
+    if (!hasPilotAccess) return
+
     async function loadCases() {
       try {
         const response = await fetch(reportApiUrl('/api/cases'))
@@ -365,7 +377,7 @@ function App() {
     }
 
     void loadCases()
-  }, [])
+  }, [hasPilotAccess])
 
   function updateProfile<T extends keyof StudentProfile>(key: T, value: StudentProfile[T]) {
     setProfile((current) => ({ ...current, [key]: value }))
@@ -462,6 +474,22 @@ function App() {
     }
   }
 
+  async function deleteCase(caseId: string) {
+    const confirmed = window.confirm('Smazat tento poradenský případ? Tato akce je nevratná.')
+    if (!confirmed) return
+
+    try {
+      const response = await fetch(reportApiUrl(`/api/cases/${caseId}`), {
+        method: 'DELETE',
+      })
+      if (!response.ok) throw new Error(`Case service returned ${response.status}`)
+      setStudentCases((current) => current.filter((studentCase) => studentCase.id !== caseId))
+    } catch {
+      setCaseSaveStatus('error')
+      window.setTimeout(() => setCaseSaveStatus('idle'), 2200)
+    }
+  }
+
   async function exportPdfReport() {
     const payload = buildReportPayload({
       profile,
@@ -520,6 +548,29 @@ function App() {
 
     setPdfStatus('ready')
     window.setTimeout(() => setPdfStatus('idle'), 1800)
+  }
+
+  if (!hasPilotAccess) {
+    return (
+      <PilotAccessGate
+        accessCode={accessCode}
+        accessError={accessError}
+        onAccessCodeChange={(value) => {
+          setAccessCode(value)
+          setAccessError('')
+        }}
+        onSubmit={() => {
+          if (accessCode.trim() === PILOT_ACCESS_CODE) {
+            window.localStorage.setItem(ACCESS_STORAGE_KEY, 'granted')
+            setHasPilotAccess(true)
+            setAccessError('')
+            return
+          }
+
+          setAccessError('Neplatný pilotní kód.')
+        }}
+      />
+    )
   }
 
   return (
@@ -708,6 +759,10 @@ function App() {
                                     {caseStatusLabels[candidate]}
                                   </button>
                                 ))}
+                              <button type="button" className="danger" onClick={() => deleteCase(studentCase.id)} aria-label={`Smazat případ ${studentCase.studentName}`}>
+                                <Trash size={12} />
+                                Smazat
+                              </button>
                             </div>
                           </div>
                         ))
@@ -1152,6 +1207,54 @@ function App() {
 
 function regionLabel(region: Region) {
   return regionOptions.find((option) => option.value === region)?.label ?? region
+}
+
+function PilotAccessGate({
+  accessCode,
+  accessError,
+  onAccessCodeChange,
+  onSubmit,
+}: {
+  accessCode: string
+  accessError: string
+  onAccessCodeChange: (value: string) => void
+  onSubmit: () => void
+}) {
+  return (
+    <main className="access-shell">
+      <section className="access-panel" aria-label="Pilotní přístup">
+        <span className="brand-mark access-mark">
+          <LockKey size={24} weight="duotone" />
+        </span>
+        <p className="eyebrow">Pilotní provoz</p>
+        <h1>Profesní mapa je uzamčená pro zapojené školy.</h1>
+        <p>
+          Vstup je určený pro poradce a školy v pilotu. Nepoužívej reálná citlivá data žáků, dokud nemá škola odsouhlasené
+          interní pravidla práce s daty.
+        </p>
+        <form
+          className="access-form"
+          onSubmit={(event) => {
+            event.preventDefault()
+            onSubmit()
+          }}
+        >
+          <label className="field">
+            <span>Pilotní kód</span>
+            <input value={accessCode} onChange={(event) => onAccessCodeChange(event.target.value)} autoFocus />
+          </label>
+          {accessError ? <strong className="access-error">{accessError}</strong> : null}
+          <button className="primary-button" type="submit">
+            Vstoupit do pilotu
+          </button>
+        </form>
+        <a className="sample-link" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer">
+          Otevřít anonymní ukázkový PDF report
+          <ArrowSquareOut size={14} />
+        </a>
+      </section>
+    </main>
+  )
 }
 
 function PanelTitle({ icon, kicker, title }: { icon: ReactNode; kicker: string; title: string }) {

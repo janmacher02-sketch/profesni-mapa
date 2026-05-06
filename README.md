@@ -33,6 +33,7 @@ Lokálně report server běží na `http://127.0.0.1:8787` a vystavuje:
 - `GET /api/cases`
 - `POST /api/cases`
 - `PATCH /api/cases/:id`
+- `DELETE /api/cases/:id`
 - `GET /api/reports`
 - `GET /api/reports/sample.pdf`
 - `POST /api/reports/pdf`
@@ -96,6 +97,7 @@ Ve Vercelu nastav proměnnou:
 
 ```bash
 VITE_REPORT_API_URL=https://api.profesnimapa.cz
+VITE_PILOT_ACCESS_CODE=PILOT2026
 ```
 
 Pro staging může být například:
@@ -103,6 +105,8 @@ Pro staging může být například:
 ```bash
 VITE_REPORT_API_URL=https://profesni-mapa-api.up.railway.app
 ```
+
+V produkčním nastavení přes Vercel rewrite může být `VITE_REPORT_API_URL=/`, aby frontend volal `/api/*` na stejné doméně a Vercel požadavky přeposlal na Railway backend.
 
 ### Backend na Railway
 

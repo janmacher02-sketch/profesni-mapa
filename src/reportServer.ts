@@ -282,6 +282,19 @@ app.patch('/api/cases/:id', async (request, response) => {
   response.json({ case: updated })
 })
 
+app.delete('/api/cases/:id', async (request, response) => {
+  const cases = await readCases()
+  const remainingCases = cases.filter((studentCase) => studentCase.id !== request.params.id)
+
+  if (remainingCases.length === cases.length) {
+    response.status(404).json({ error: 'Case not found' })
+    return
+  }
+
+  await writeCases(remainingCases)
+  response.status(204).end()
+})
+
 app.get('/api/reports', async (_request, response) => {
   try {
     const auditLog = await readFile(auditPath, 'utf8')
