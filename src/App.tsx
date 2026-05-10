@@ -183,6 +183,15 @@ const licensePlanOptions: Option<SchoolLicense['plan']>[] = [
   { value: 'region', label: 'Zřizovatel / kraj' },
 ]
 
+const publicGuideLinks = [
+  { href: '/pruvodce/jak-vybrat-stredni-skolu/', title: 'Jak vybrat střední školu', note: 'Postup podle profese, kraje a reálné praxe.' },
+  { href: '/pruvodce/kam-na-stredni-kdyz-me-nic-nebavi/', title: 'Kam na střední, když mě nic nebaví', note: 'Praktický postup pro nerozhodnuté deváťáky.' },
+  { href: '/pruvodce/ucnak-nebo-maturita/', title: 'Učňák nebo maturita', note: 'Rozhodnutí bez předsudků a podle cíle.' },
+  { href: '/pruvodce/dobre-placene-obory-po-ucnaku/', title: 'Dobře placené obory po učňáku', note: 'Elektro, servis, stavba, výroba a logistika.' },
+  { href: '/pruvodce/profese-bez-vysoke-skoly/', title: 'Profese bez vysoké školy', note: 'Cesty, kde rozhoduje praxe a kvalifikace.' },
+  { href: '/pruvodce/test-povolani-pro-devatak/', title: 'Test povolání pro deváťáka', note: 'Co má opravdu měřit užitečný test.' },
+]
+
 const coverageSegments = [
   {
     label: 'Řemesla a stavebnictví',
@@ -1735,6 +1744,22 @@ function PilotAccessGate({
                 <small>
                   {formatCurrency(career.monthlyPay)} / poptavka {career.demandScore}
                 </small>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        <section className="consumer-career-links" aria-label="Průvodce výběrem střední školy">
+          <div>
+            <p className="eyebrow">SEO průvodce</p>
+            <h2>Články pro lidi, kteří ještě nehledají konkrétní profesi.</h2>
+            <p>Tyto stránky cílí na dotazy typu jak vybrat střední školu, učňák nebo maturita a kam jít, když žák neví.</p>
+          </div>
+          <div className="career-link-grid">
+            {publicGuideLinks.map((guide) => (
+              <a href={guide.href} key={guide.href} onClick={() => trackPublicEvent('guide_page_click', { guide: guide.href })}>
+                <strong>{guide.title}</strong>
+                <small>{guide.note}</small>
               </a>
             ))}
           </div>
