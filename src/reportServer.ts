@@ -47,6 +47,13 @@ const leadSchema = z.object({
   source: z.string().trim().max(80).optional().default('landing'),
 })
 
+const eventSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  path: z.string().trim().max(240).optional().default('/'),
+  source: z.string().trim().max(80).optional().default('web'),
+  properties: z.record(z.unknown()).optional().default({}),
+})
+
 const app = express()
 const portSource = process.env.PORT ?? process.env.RAILWAY_TCP_PROXY_PORT ?? process.env.REPORT_PORT ?? '8787'
 const parsedPort = Number(portSource)
@@ -63,6 +70,7 @@ const reportRoot = path.resolve(storageRoot, 'reports')
 const auditPath = path.resolve(storageRoot, 'report-audit.jsonl')
 const casesPath = path.resolve(storageRoot, 'cases.json')
 const leadsPath = path.resolve(storageRoot, 'leads.jsonl')
+const eventsPath = path.resolve(storageRoot, 'events.jsonl')
 const allowedOrigins = (process.env.CORS_ORIGIN ?? '')
   .split(',')
   .map((origin) => origin.trim())
@@ -257,6 +265,33 @@ async function readLeads() {
   }
 }
 
+async function readEvents() {
+  try {
+    const raw = await readFile(eventsPath, 'utf8')
+    return raw
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { id: string; createdAt: string; name: string })
+  } catch {
+    return []
+  }
+}
+
+function summarizeEvents(events: { createdAt: string; name: string }[]) {
+  const since = Date.now() - 24 * 60 * 60 * 1000
+  const byName = events.reduce<Record<string, number>>((summary, event) => {
+    summary[event.name] = (summary[event.name] ?? 0) + 1
+    return summary
+  }, {})
+
+  return {
+    total: events.length,
+    last24h: events.filter((event) => new Date(event.createdAt).getTime() >= since).length,
+    byName,
+  }
+}
+
 function buildSampleReportPayload(): ReportPayload {
   const profile = {
     ...defaultProfile,
@@ -301,7 +336,7 @@ app.get('/favicon.ico', (_request, response) => {
 })
 
 app.get('/api/status', async (_request, response) => {
-  const [cases, leads, storageWritable, reportCount] = await Promise.all([readCases(), readLeads(), checkStorageWritable(), readReportCount()])
+  const [cases, leads, events, storageWritable, reportCount] = await Promise.all([readCases(), readLeads(), readEvents(), checkStorageWritable(), readReportCount()])
 
   response.json({
     ok: true,
@@ -310,6 +345,7 @@ app.get('/api/status', async (_request, response) => {
     storageConfigured: Boolean(process.env.REPORT_STORAGE_DIR),
     caseCount: cases.length,
     leadCount: leads.length,
+    eventCount: events.length,
     reportCount,
     runtime: {
       host,
@@ -341,6 +377,33 @@ app.post('/api/auth/login', (request, response) => {
 app.post('/api/auth/logout', (_request, response) => {
   clearPilotSessionCookie(response)
   response.json({ authenticated: false })
+})
+
+app.post('/api/events', async (request, response) => {
+  const parsed = eventSchema.safeParse(request.body)
+
+  if (!parsed.success) {
+    response.status(400).json({ error: 'Invalid event payload', issues: parsed.error.issues })
+    return
+  }
+
+  const event = {
+    id: `evt-${randomUUID().slice(0, 10)}`,
+    createdAt: new Date().toISOString(),
+    ...parsed.data,
+    userAgent: request.headers['user-agent'] ?? null,
+    referer: request.headers.referer ?? null,
+  }
+
+  await mkdir(storageRoot, { recursive: true })
+  await appendFile(eventsPath, `${JSON.stringify(event)}\n`, 'utf8')
+
+  response.status(201).json({ ok: true })
+})
+
+app.get('/api/events', requirePilotAccess, async (_request, response) => {
+  const events = await readEvents()
+  response.json({ events: events.slice(-300).reverse(), summary: summarizeEvents(events) })
 })
 
 app.post('/api/leads', async (request, response) => {

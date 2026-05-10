@@ -595,6 +595,7 @@
 .launch-board,
 .moat-board,
 .case-board,
+.lead-board,
 .partner-card {
   border: 1px solid var(--line);
   background: var(--surface);
@@ -621,13 +622,115 @@
 .gap-card,
 .launch-board,
 .moat-board,
-.case-board {
+.case-board,
+.lead-board {
   border-radius: 12px;
   padding: 20px;
 }
 
-.case-board {
+.case-board,
+.lead-board {
   margin-bottom: 18px;
+}
+
+.lead-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.lead-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.8fr);
+  gap: 14px;
+}
+
+.lead-list-panel,
+.event-list-panel {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfefd;
+  padding: 12px;
+}
+
+.lead-panel-head,
+.lead-record,
+.event-record {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lead-panel-head {
+  margin-bottom: 4px;
+}
+
+.lead-panel-head h3 {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.lead-panel-head > span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--wash);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.lead-record,
+.event-record,
+.lead-empty {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  padding: 11px;
+  margin-top: 9px;
+}
+
+.lead-record h4,
+.event-record strong {
+  display: block;
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.lead-record p,
+.event-record small,
+.event-record p,
+.lead-record small,
+.lead-empty {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.lead-record p,
+.event-record p {
+  margin: 4px 0 0;
+}
+
+.lead-record small {
+  display: block;
+  margin-top: 6px;
+}
+
+.lead-record a {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
 }
 
 .case-columns {
@@ -1966,7 +2069,9 @@ textarea {
   .coverage-workspace,
   .launch-grid,
   .moat-grid,
-  .case-columns {
+  .case-columns,
+  .lead-metrics,
+  .lead-workspace-grid {
     grid-template-columns: 1fr;
   }
 

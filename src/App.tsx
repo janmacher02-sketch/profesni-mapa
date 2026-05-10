@@ -68,6 +68,53 @@ type LeadFormState = {
   note: string
 }
 
+type BetaLead = {
+  id: string
+  createdAt: string
+  name: string
+  email: string
+  role?: string
+  note?: string
+  source?: string
+}
+
+type AnalyticsEvent = {
+  id: string
+  createdAt: string
+  name: string
+  path?: string
+  source?: string
+  properties?: Record<string, unknown>
+}
+
+type AnalyticsSummary = {
+  total: number
+  last24h: number
+  byName: Record<string, number>
+}
+
+function trackPublicEvent(name: string, properties: Record<string, string | number | boolean | null> = {}) {
+  const body = JSON.stringify({
+    name,
+    path: `${window.location.pathname}${window.location.hash}`,
+    source: 'consumer-web',
+    properties,
+  })
+  const url = reportApiUrl('/api/events')
+
+  if (navigator.sendBeacon) {
+    const payload = new Blob([body], { type: 'application/json' })
+    if (navigator.sendBeacon(url, payload)) return
+  }
+
+  void fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+    keepalive: true,
+  }).catch(() => undefined)
+}
+
 const interestOptions: Option<Interest>[] = [
   { value: 'building', label: 'Řemeslo a opravy' },
   { value: 'healthcare', label: 'Zdravotnictví' },
@@ -338,6 +385,9 @@ function App() {
   const [accessChecked, setAccessChecked] = useState(false)
   const [leadForm, setLeadForm] = useState<LeadFormState>({ name: '', email: '', role: '', note: '' })
   const [leadStatus, setLeadStatus] = useState<'idle' | 'submitting' | 'sent' | 'error'>('idle')
+  const [betaLeads, setBetaLeads] = useState<BetaLead[]>([])
+  const [analyticsEvents, setAnalyticsEvents] = useState<AnalyticsEvent[]>([])
+  const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary>({ total: 0, last24h: 0, byName: {} })
   const matches = useMemo(() => scoreCareers(profile, careers), [profile])
   const [selectedId, setSelectedId] = useState(defaultProfile.interest === 'building' ? 'elektromechanik' : matches[0].career.id)
   const selected = matches.find((match) => match.career.id === selectedId) ?? matches[0]
@@ -394,20 +444,38 @@ function App() {
   useEffect(() => {
     if (!accessChecked || !hasPilotAccess) return
 
-    async function loadCases() {
+    async function loadWorkspaceData() {
       try {
-        const response = await fetch(reportApiUrl('/api/cases'), {
-          credentials: 'include',
-        })
-        if (!response.ok) throw new Error(`Case service returned ${response.status}`)
-        const data = (await response.json()) as { cases: StudentCase[] }
-        setStudentCases(data.cases)
+        const [caseResponse, leadResponse, eventResponse] = await Promise.all([
+          fetch(reportApiUrl('/api/cases'), { credentials: 'include' }),
+          fetch(reportApiUrl('/api/leads'), { credentials: 'include' }),
+          fetch(reportApiUrl('/api/events'), { credentials: 'include' }),
+        ])
+
+        if (caseResponse.ok) {
+          const data = (await caseResponse.json()) as { cases: StudentCase[] }
+          setStudentCases(data.cases)
+        }
+
+        if (leadResponse.ok) {
+          const data = (await leadResponse.json()) as { leads: BetaLead[] }
+          setBetaLeads(data.leads)
+        }
+
+        if (eventResponse.ok) {
+          const data = (await eventResponse.json()) as { events: AnalyticsEvent[]; summary: AnalyticsSummary }
+          setAnalyticsEvents(data.events)
+          setAnalyticsSummary(data.summary)
+        }
       } catch {
         setStudentCases([])
+        setBetaLeads([])
+        setAnalyticsEvents([])
+        setAnalyticsSummary({ total: 0, last24h: 0, byName: {} })
       }
     }
 
-    void loadCases()
+    void loadWorkspaceData()
   }, [accessChecked, hasPilotAccess])
 
   function updateProfile<T extends keyof StudentProfile>(key: T, value: StudentProfile[T]) {
@@ -598,7 +666,9 @@ function App() {
 
       setHasPilotAccess(true)
       setAccessError('')
+      trackPublicEvent('pilot_login_success')
     } catch {
+      trackPublicEvent('pilot_login_error')
       setAccessError('Neplatný pilotní kód.')
     }
   }
@@ -611,10 +681,12 @@ function App() {
   async function submitLead() {
     if (!leadForm.name.trim() || !leadForm.email.trim()) {
       setLeadStatus('error')
+      trackPublicEvent('lead_validation_error')
       return
     }
 
     setLeadStatus('submitting')
+    trackPublicEvent('lead_submit_attempt', { role: leadForm.role || null })
 
     try {
       const response = await fetch(reportApiUrl('/api/leads'), {
@@ -626,9 +698,11 @@ function App() {
       if (!response.ok) throw new Error(`Lead service returned ${response.status}`)
 
       setLeadStatus('sent')
+      trackPublicEvent('lead_submit_success', { role: leadForm.role || null })
       setLeadForm({ name: '', email: '', role: '', note: '' })
     } catch {
       setLeadStatus('error')
+      trackPublicEvent('lead_submit_error')
     }
   }
 
@@ -702,6 +776,10 @@ function App() {
           <a href="#cases">
             <Student size={19} />
             Žáci
+          </a>
+          <a href="#leads">
+            <UsersThree size={19} />
+            Leady
           </a>
           <a href="#coverage">
             <Database size={19} />
@@ -894,6 +972,84 @@ function App() {
                   </article>
                 )
               })}
+            </div>
+          </section>
+
+          <section className="lead-board" id="leads" aria-label="Leady a aktivita landing page">
+            <div className="panel-header">
+              <PanelTitle icon={<UsersThree size={21} />} kicker="Beta funnel" title="Leady a mereni verejne stranky" />
+              <span className="sort-pill">{analyticsSummary.last24h} udalosti za 24 h</span>
+            </div>
+
+            <div className="lead-metrics">
+              <MetricTile icon={<UsersThree size={18} />} label="Leady" value={betaLeads.length.toString()} />
+              <MetricTile icon={<SlidersHorizontal size={18} />} label="Demo zmeny" value={(analyticsSummary.byName.demo_change ?? 0).toString()} />
+              <MetricTile icon={<FilePdf size={18} />} label="PDF kliky" value={(analyticsSummary.byName.sample_pdf_click ?? 0).toString()} />
+              <MetricTile icon={<ArrowRight size={18} />} label="Report CTA" value={(analyticsSummary.byName.report_cta_click ?? 0).toString()} />
+            </div>
+
+            <div className="lead-workspace-grid">
+              <article className="lead-list-panel">
+                <div className="lead-panel-head">
+                  <div>
+                    <p className="eyebrow">Kontakty</p>
+                    <h3>Beta zajemci</h3>
+                  </div>
+                  <span>{betaLeads.length}</span>
+                </div>
+                {betaLeads.length > 0 ? (
+                  <div className="lead-record-list">
+                    {betaLeads.slice(0, 8).map((lead) => (
+                      <div className="lead-record" key={lead.id}>
+                        <div>
+                          <h4>{lead.name}</h4>
+                          <p>
+                            {lead.role || 'bez role'} / {new Date(lead.createdAt).toLocaleString('cs-CZ')}
+                          </p>
+                          {lead.note ? <small>{lead.note}</small> : null}
+                        </div>
+                        <a href={`mailto:${lead.email}`}>{lead.email}</a>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="lead-empty">Zatim zadny lead. Jakmile nekdo vyplni formular, objevi se tady.</div>
+                )}
+              </article>
+
+              <article className="event-list-panel">
+                <div className="lead-panel-head">
+                  <div>
+                    <p className="eyebrow">Aktivita</p>
+                    <h3>Udalosti landing page</h3>
+                  </div>
+                  <span>{analyticsSummary.total}</span>
+                </div>
+                {analyticsEvents.length > 0 ? (
+                  <div className="event-record-list">
+                    {analyticsEvents.slice(0, 12).map((event) => (
+                      <div className="event-record" key={event.id}>
+                        <div>
+                          <strong>{event.name}</strong>
+                          <small>
+                            {new Date(event.createdAt).toLocaleString('cs-CZ')} / {event.path ?? '/'}
+                          </small>
+                        </div>
+                        {event.properties && Object.keys(event.properties).length > 0 ? (
+                          <p>
+                            {Object.entries(event.properties)
+                              .slice(0, 2)
+                              .map(([key, value]) => `${key}: ${String(value)}`)
+                              .join(' / ')}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="lead-empty">Zatim zadne udalosti. Otevreni landing page a kliky se zacnou zapisovat automaticky.</div>
+                )}
+              </article>
             </div>
           </section>
 
@@ -1356,8 +1512,13 @@ function PilotAccessGate({
   })
   const demoMatches = useMemo(() => scoreCareers(demoProfile, careers).slice(0, 3), [demoProfile])
 
+  useEffect(() => {
+    trackPublicEvent('page_view')
+  }, [])
+
   function updateDemoProfile<T extends keyof StudentProfile>(key: T, value: StudentProfile[T]) {
     setDemoProfile((current) => ({ ...current, [key]: value }))
+    trackPublicEvent('demo_change', { field: String(key), value: String(value) })
   }
 
   return (
@@ -1394,11 +1555,11 @@ function PilotAccessGate({
               p&#345;ipraven&yacute; jako PDF report pro rozhodov&aacute;n&iacute; doma i ve &#353;kole.
             </p>
             <div className="access-actions consumer-actions">
-              <a className="primary-button" href="#demo">
+              <a className="primary-button" href="#demo" onClick={() => trackPublicEvent('demo_cta_click')}>
                 <SlidersHorizontal size={16} />
                 Zkusit demo zdarma
               </a>
-              <a className="text-button public-cta" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer">
+              <a className="text-button public-cta" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer" onClick={() => trackPublicEvent('sample_pdf_click')}>
                 Uk&aacute;zkov&yacute; PDF report
                 <FilePdf size={15} />
               </a>
@@ -1507,7 +1668,7 @@ function PilotAccessGate({
               <LockKey size={17} weight="duotone" />
               <span>Pln&yacute; report dopln&iacute; rizika, konkr&eacute;tn&iacute; obory, &#353;koly k ov&#283;&#345;en&iacute; a ak&#269;n&iacute; pl&aacute;n.</span>
             </div>
-            <a className="primary-button wide" href="#pricing">
+            <a className="primary-button wide" href="#pricing" onClick={() => trackPublicEvent('report_cta_click', { topCareer: demoMatches[0]?.career.title ?? null })}>
               Chci pln&yacute; beta report
             </a>
           </div>
@@ -1645,7 +1806,7 @@ function PilotAccessGate({
               Vstoupit do aplikace
             </button>
           </form>
-          <a className="sample-link" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer">
+          <a className="sample-link" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer" onClick={() => trackPublicEvent('sample_pdf_click', { placement: 'pilot_panel' })}>
             Otev&#345;&iacute;t anonymn&iacute; uk&aacute;zkov&yacute; PDF report
             <ArrowSquareOut size={14} />
           </a>
