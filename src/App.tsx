@@ -1349,6 +1349,17 @@ function PilotAccessGate({
   onLeadFieldChange: <T extends keyof LeadFormState>(key: T, value: LeadFormState[T]) => void
   onLeadSubmit: () => void
 }) {
+  const [demoProfile, setDemoProfile] = useState<StudentProfile>({
+    ...defaultProfile,
+    studentName: 'Demo',
+    salaryGoal: 38000,
+  })
+  const demoMatches = useMemo(() => scoreCareers(demoProfile, careers).slice(0, 3), [demoProfile])
+
+  function updateDemoProfile<T extends keyof StudentProfile>(key: T, value: StudentProfile[T]) {
+    setDemoProfile((current) => ({ ...current, [key]: value }))
+  }
+
   return (
     <main className="access-shell consumer-landing-shell">
       <section className="consumer-landing" aria-label="Profesni mapa">
@@ -1364,12 +1375,13 @@ function PilotAccessGate({
           </a>
           <div className="consumer-nav-links">
             <a href="#how">Jak to funguje</a>
+            <a href="#demo">Demo</a>
             <a href="#report">Uk&aacute;zka reportu</a>
             <a href="#pricing">Cena</a>
           </div>
-          <a className="text-button consumer-nav-cta" href="mailto:janmacher02@gmail.com?subject=Beta%20Profesni%20mapa">
-            Chci beta p&#345;&iacute;stup
-            <ArrowSquareOut size={14} />
+          <a className="text-button consumer-nav-cta" href="#pricing">
+            Chci report
+            <ArrowRight size={14} />
           </a>
         </nav>
 
@@ -1382,13 +1394,13 @@ function PilotAccessGate({
               p&#345;ipraven&yacute; jako PDF report pro rozhodov&aacute;n&iacute; doma i ve &#353;kole.
             </p>
             <div className="access-actions consumer-actions">
-              <a className="primary-button" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer">
-                <FilePdf size={16} />
-                Otev&#345;&iacute;t uk&aacute;zkov&yacute; report
+              <a className="primary-button" href="#demo">
+                <SlidersHorizontal size={16} />
+                Zkusit demo zdarma
               </a>
-              <a className="text-button public-cta" href="#pilot-access">
-                Vstoupit do beta verze
-                <ArrowRight size={15} />
+              <a className="text-button public-cta" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer">
+                Uk&aacute;zkov&yacute; PDF report
+                <FilePdf size={15} />
               </a>
             </div>
             <div className="consumer-proof-row" aria-label="Co uz produkt obsahuje">
@@ -1443,6 +1455,61 @@ function PilotAccessGate({
                 <span>Report obsahuje doporu&#269;en&iacute;, rizika, &#353;koly k ov&#283;&#345;en&iacute; a 30denn&iacute; ak&#269;n&iacute; pl&aacute;n.</span>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="consumer-demo" id="demo" aria-label="Bezplatne demo">
+          <div className="demo-form-card">
+            <p className="eyebrow">Bezplatn&yacute; n&aacute;hled</p>
+            <h2>Zadej z&aacute;kladn&iacute; profil a uvid&iacute;&scaron; prvn&iacute; doporu&#269;en&iacute;.</h2>
+            <p>Demo neukl&aacute;d&aacute; citliv&aacute; data. Slou&#382;&iacute; k rychl&eacute;mu ov&#283;&#345;en&iacute;, jestli produkt d&aacute;v&aacute; smysl pro tebe nebo pro tvoje d&iacute;t&#283;.</p>
+            <div className="demo-form-grid">
+              <SelectField label="Hlavn&iacute; z&aacute;jem" value={demoProfile.interest} options={interestOptions} onChange={(value) => updateDemoProfile('interest', value)} />
+              <SelectField label="Kraj" value={demoProfile.region} options={regionOptions} onChange={(value) => updateDemoProfile('region', value)} />
+              <SelectField label="D&eacute;lka cesty" value={demoProfile.trainingWindow} options={trainingOptions} onChange={(value) => updateDemoProfile('trainingWindow', value)} />
+              <SelectField label="Pr&aacute;ce s lidmi" value={demoProfile.peopleMode} options={peopleOptions} onChange={(value) => updateDemoProfile('peopleMode', value)} />
+              <label className="field demo-salary-field">
+                <span>C&iacute;lov&aacute; hrub&aacute; mzda</span>
+                <input
+                  type="number"
+                  min={25000}
+                  step={1000}
+                  value={demoProfile.salaryGoal}
+                  onChange={(event) => updateDemoProfile('salaryGoal', Number(event.target.value))}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="demo-results-card">
+            <div className="demo-results-head">
+              <div>
+                <p className="eyebrow">Tv&#367;j n&aacute;hled</p>
+                <h3>Top 3 profesn&iacute; cesty</h3>
+              </div>
+              <span>{regionOptions.find((option) => option.value === demoProfile.region)?.label}</span>
+            </div>
+            <div className="demo-results-list">
+              {demoMatches.map((match, index) => (
+                <article className="demo-result" key={match.career.id}>
+                  <span>{String(index + 1).padStart(2, '0')}</span>
+                  <div>
+                    <strong>{match.career.title}</strong>
+                    <small>
+                      {formatCurrency(match.career.monthlyPay)} / {formatMonths(match.career.trainingMonths)} / shoda {match.score} %
+                    </small>
+                    <p>{match.reasons[0] ?? match.career.summary}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="demo-lock">
+              <LockKey size={17} weight="duotone" />
+              <span>Pln&yacute; report dopln&iacute; rizika, konkr&eacute;tn&iacute; obory, &#353;koly k ov&#283;&#345;en&iacute; a ak&#269;n&iacute; pl&aacute;n.</span>
+            </div>
+            <a className="primary-button wide" href="#pricing">
+              Chci pln&yacute; beta report
+            </a>
           </div>
         </section>
 
