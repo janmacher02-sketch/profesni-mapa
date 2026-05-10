@@ -9,8 +9,8 @@
   --success: #2a9d6f;
   --warn: #b95f33;
   --wash: #eef4f0;
-  --font: 'Aptos', 'Segoe UI', system-ui, sans-serif;
-  --mono: 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
+  --font: 'Geist', 'Aptos', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Geist Mono', 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
   color: var(--ink);
   background: var(--canvas);
   font-family: var(--font);
@@ -37,7 +37,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 

@@ -61,6 +61,13 @@ type Option<T extends string> = {
   label: string
 }
 
+type LeadFormState = {
+  name: string
+  email: string
+  role: string
+  note: string
+}
+
 const interestOptions: Option<Interest>[] = [
   { value: 'building', label: 'Řemeslo a opravy' },
   { value: 'healthcare', label: 'Zdravotnictví' },
@@ -329,6 +336,8 @@ function App() {
   const [accessError, setAccessError] = useState('')
   const [hasPilotAccess, setHasPilotAccess] = useState(false)
   const [accessChecked, setAccessChecked] = useState(false)
+  const [leadForm, setLeadForm] = useState<LeadFormState>({ name: '', email: '', role: '', note: '' })
+  const [leadStatus, setLeadStatus] = useState<'idle' | 'submitting' | 'sent' | 'error'>('idle')
   const matches = useMemo(() => scoreCareers(profile, careers), [profile])
   const [selectedId, setSelectedId] = useState(defaultProfile.interest === 'building' ? 'elektromechanik' : matches[0].career.id)
   const selected = matches.find((match) => match.career.id === selectedId) ?? matches[0]
@@ -360,9 +369,13 @@ function App() {
 
   useEffect(() => {
     async function checkSession() {
+      const controller = new AbortController()
+      const timeoutId = window.setTimeout(() => controller.abort(), 1600)
+
       try {
         const response = await fetch(reportApiUrl('/api/auth/session'), {
           credentials: 'include',
+          signal: controller.signal,
         })
         if (!response.ok) throw new Error(`Auth service returned ${response.status}`)
         const data = (await response.json()) as { authenticated: boolean }
@@ -370,6 +383,7 @@ function App() {
       } catch {
         setHasPilotAccess(false)
       } finally {
+        window.clearTimeout(timeoutId)
         setAccessChecked(true)
       }
     }
@@ -589,6 +603,35 @@ function App() {
     }
   }
 
+  function updateLeadForm<T extends keyof LeadFormState>(key: T, value: LeadFormState[T]) {
+    setLeadForm((current) => ({ ...current, [key]: value }))
+    if (leadStatus !== 'idle') setLeadStatus('idle')
+  }
+
+  async function submitLead() {
+    if (!leadForm.name.trim() || !leadForm.email.trim()) {
+      setLeadStatus('error')
+      return
+    }
+
+    setLeadStatus('submitting')
+
+    try {
+      const response = await fetch(reportApiUrl('/api/leads'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...leadForm, source: 'consumer-landing' }),
+      })
+
+      if (!response.ok) throw new Error(`Lead service returned ${response.status}`)
+
+      setLeadStatus('sent')
+      setLeadForm({ name: '', email: '', role: '', note: '' })
+    } catch {
+      setLeadStatus('error')
+    }
+  }
+
   if (!accessChecked) {
     return (
       <main className="access-shell">
@@ -609,11 +652,15 @@ function App() {
       <PilotAccessGate
         accessCode={accessCode}
         accessError={accessError}
+        leadForm={leadForm}
+        leadStatus={leadStatus}
         onAccessCodeChange={(value) => {
           setAccessCode(value)
           setAccessError('')
         }}
         onSubmit={loginWithPilotCode}
+        onLeadFieldChange={updateLeadForm}
+        onLeadSubmit={submitLead}
       />
     )
   }
@@ -1286,58 +1333,235 @@ function regionLabel(region: Region) {
 function PilotAccessGate({
   accessCode,
   accessError,
+  leadForm,
+  leadStatus,
   onAccessCodeChange,
   onSubmit,
+  onLeadFieldChange,
+  onLeadSubmit,
 }: {
   accessCode: string
   accessError: string
+  leadForm: LeadFormState
+  leadStatus: 'idle' | 'submitting' | 'sent' | 'error'
   onAccessCodeChange: (value: string) => void
   onSubmit: () => void
+  onLeadFieldChange: <T extends keyof LeadFormState>(key: T, value: LeadFormState[T]) => void
+  onLeadSubmit: () => void
 }) {
   return (
-    <main className="access-shell">
-      <section className="access-landing" aria-label="Profesní mapa pilot">
-        <div className="access-hero">
-          <a className="brand-lockup public-brand" href="/" aria-label="Profesní mapa">
+    <main className="access-shell consumer-landing-shell">
+      <section className="consumer-landing" aria-label="Profesni mapa">
+        <nav className="consumer-nav" aria-label="Verejna navigace">
+          <a className="brand-lockup public-brand" href="/" aria-label="Profesni mapa">
             <span className="brand-mark">
               <Compass size={21} weight="duotone" />
             </span>
             <span>
-              <strong>Profesní mapa</strong>
-              <small>Kariérové poradenství pro školy</small>
+              <strong>Profesn&iacute; mapa</strong>
+              <small>Report profesn&iacute; cesty pro &#268;R</small>
             </span>
           </a>
-          <p className="eyebrow">Pilot pro ZŠ a SŠ</p>
-          <h1>Datově podložené profesní cesty místo náhodných doporučení.</h1>
-          <p>
-            Webová pracovní plocha pro kariérové poradce. Spojuje profil žáka, regionální poptávku, obory škol a PDF report pro
-            rodiče do jednoho opakovatelného workflow.
-          </p>
-          <div className="access-actions">
-            <a className="primary-button" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer">
-              <FilePdf size={16} />
-              Ukázkový PDF report
-            </a>
-            <a className="text-button public-cta" href="mailto:janmacher02@gmail.com?subject=Pilot%20Profesni%20mapa">
-              Domluvit pilot
-              <ArrowSquareOut size={14} />
-            </a>
+          <div className="consumer-nav-links">
+            <a href="#how">Jak to funguje</a>
+            <a href="#report">Uk&aacute;zka reportu</a>
+            <a href="#pricing">Cena</a>
           </div>
-          <div className="marketing-proof-grid" aria-label="Pilotní metriky">
-            <MetricTile icon={<Briefcase size={18} />} label="Profese" value={`${careers.length}+`} />
-            <MetricTile icon={<Database size={18} />} label="Zdroje" value="NSP / MPSV" />
-            <MetricTile icon={<FilePdf size={18} />} label="Výstup" value="PDF report" />
-            <MetricTile icon={<UsersThree size={18} />} label="Pilot" value="5 škol" />
-          </div>
-        </div>
+          <a className="text-button consumer-nav-cta" href="mailto:janmacher02@gmail.com?subject=Beta%20Profesni%20mapa">
+            Chci beta p&#345;&iacute;stup
+            <ArrowSquareOut size={14} />
+          </a>
+        </nav>
 
-        <aside className="access-panel" aria-label="Pilotní přístup">
+        <section className="consumer-hero">
+          <div className="consumer-hero-copy">
+            <p className="eyebrow">Pro studenty a rodi&#269;e v &#268;esku</p>
+            <h1>Vyber profesi podle dat, ne podle n&aacute;hody.</h1>
+            <p>
+              Kr&aacute;tk&yacute; profil, kraj a preference prom&#283;n&iacute;me v p&#345;ehled profes&iacute;, &#353;koln&iacute;ch obor&#367;, mzdy, rizik a konkr&eacute;tn&iacute;ho pl&aacute;nu. V&yacute;stup je
+              p&#345;ipraven&yacute; jako PDF report pro rozhodov&aacute;n&iacute; doma i ve &#353;kole.
+            </p>
+            <div className="access-actions consumer-actions">
+              <a className="primary-button" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer">
+                <FilePdf size={16} />
+                Otev&#345;&iacute;t uk&aacute;zkov&yacute; report
+              </a>
+              <a className="text-button public-cta" href="#pilot-access">
+                Vstoupit do beta verze
+                <ArrowRight size={15} />
+              </a>
+            </div>
+            <div className="consumer-proof-row" aria-label="Co uz produkt obsahuje">
+              <MetricTile icon={<Briefcase size={18} />} label="Profese" value={String(careers.length) + '+'} />
+              <MetricTile icon={<MapPin size={18} />} label="Region" value={'14 kraj\u016f'} />
+              <MetricTile icon={<Database size={18} />} label="Data" value="NSP / MPSV" />
+            </div>
+          </div>
+
+          <div className="consumer-preview" id="report" aria-label="Ukazka vysledku">
+            <div className="preview-window">
+              <div className="preview-window-bar">
+                <span />
+                <span />
+                <span />
+                <strong>Uk&aacute;zka doporu&#269;en&iacute;</strong>
+              </div>
+              <div className="preview-student-row">
+                <div>
+                  <small>Profil</small>
+                  <strong>Technika, pr&aacute;ce rukama, Praha</strong>
+                </div>
+                <span className="preview-badge">PDF p&#345;ipraveno</span>
+              </div>
+              <div className="preview-score-card">
+                <div className="preview-score-ring">92</div>
+                <div>
+                  <small>Nejvy&#353;&#353;&iacute; shoda</small>
+                  <h2>Elektromechanik</h2>
+                  <p>Dobr&aacute; region&aacute;ln&iacute; popt&aacute;vka, jasn&aacute; u&#269;ebn&iacute; cesta a rychl&yacute; n&aacute;stup do placen&eacute; praxe.</p>
+                </div>
+              </div>
+              <div className="preview-list">
+                <div>
+                  <span>01</span>
+                  <strong>Elektromechanik</strong>
+                  <small>38 900 K&#269; / m&#283;s&iacute;c</small>
+                </div>
+                <div>
+                  <span>02</span>
+                  <strong>Technik PC a s&iacute;t&iacute;</strong>
+                  <small>42 400 K&#269; / m&#283;s&iacute;c</small>
+                </div>
+                <div>
+                  <span>03</span>
+                  <strong>Servisn&iacute; technik FVE</strong>
+                  <small>44 800 K&#269; / m&#283;s&iacute;c</small>
+                </div>
+              </div>
+              <div className="preview-note">
+                <SealCheck size={17} weight="duotone" />
+                <span>Report obsahuje doporu&#269;en&iacute;, rizika, &#353;koly k ov&#283;&#345;en&iacute; a 30denn&iacute; ak&#269;n&iacute; pl&aacute;n.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="consumer-grid" id="how" aria-label="Jak Profesni mapa pomaha">
+          <article className="consumer-feature feature-wide">
+            <span><SlidersHorizontal size={20} /></span>
+            <h2>Neza&#269;&iacute;n&aacute; se katalogem profes&iacute;. Za&#269;&iacute;n&aacute; se &#269;lov&#283;kem.</h2>
+            <p>U&#382;ivatel zad&aacute; z&aacute;jmy, toleranci k d&eacute;lce studia, manu&aacute;ln&iacute; z&aacute;t&#283;&#382;, pr&aacute;ci s lidmi, rozpo&#269;et a kraj. Teprve potom aplikace &#345;ad&iacute; profese.</p>
+          </article>
+          <article className="consumer-feature">
+            <span><ChartLineUp size={20} /></span>
+            <h3>Region&aacute;ln&iacute; realita</h3>
+            <p>Ka&#382;d&eacute; doporu&#269;en&iacute; ukazuje, jestli profesn&iacute; cesta d&aacute;v&aacute; smysl v konkr&eacute;tn&iacute;m kraji.</p>
+          </article>
+          <article className="consumer-feature">
+            <span><GraduationCap size={20} /></span>
+            <h3>&Scaron;koly a obory</h3>
+            <p>Report nekon&#269;&iacute; u n&aacute;zvu profese. Uk&aacute;&#382;e, jak&yacute; obor hledat a co si ov&#283;&#345;it.</p>
+          </article>
+          <article className="consumer-feature feature-dark">
+            <span><FilePdf size={20} /></span>
+            <h3>V&yacute;sledek, kter&yacute; jde poslat d&aacute;l</h3>
+            <p>PDF report pro rodi&#269;e, poradce nebo samotn&eacute;ho studenta. Stru&#269;n&yacute;, konkr&eacute;tn&iacute;, bez zbyte&#269;n&eacute; om&aacute;&#269;ky.</p>
+          </article>
+        </section>
+
+        <section className="consumer-steps" aria-label="Postup pouziti">
+          <div>
+            <p className="eyebrow">T&#345;i minuty m&iacute;sto t&#345;&iacute; hodin hled&aacute;n&iacute;</p>
+            <h2>Jednoduch&yacute; postup pro prvn&iacute; rozhodnut&iacute;</h2>
+          </div>
+          <ol>
+            <li>
+              <span>01</span>
+              <strong>Vypln&iacute;&#353; kr&aacute;tk&yacute; profil</strong>
+              <small>Z&aacute;jmy, region, d&eacute;lka studia, pr&aacute;ce s lidmi, fyzick&aacute; n&aacute;ro&#269;nost a o&#269;ek&aacute;van&yacute; p&#345;&iacute;jem.</small>
+            </li>
+            <li>
+              <span>02</span>
+              <strong>Dostane&#353; TOP profesn&iacute; cesty</strong>
+              <small>Ka&#382;d&aacute; cesta m&aacute; sk&oacute;re shody, mzdu, studijn&iacute; cestu, plusy, rizika a datov&eacute; zdroje.</small>
+            </li>
+            <li>
+              <span>03</span>
+              <strong>St&aacute;hne&#353; PDF report</strong>
+              <small>V&yacute;stup se d&aacute; vz&iacute;t na sch&#367;zku s rodi&#269;i, poradcem nebo pou&#382;&iacute;t jako vlastn&iacute; pl&aacute;n.</small>
+            </li>
+          </ol>
+        </section>
+
+        <section className="consumer-pricing" id="pricing" aria-label="Cena reportu">
+          <div>
+            <p className="eyebrow">Placen&yacute; v&yacute;stup bez slo&#382;it&eacute;ho &#269;lenstv&iacute;</p>
+            <h2>Nejd&#345;&iacute;v report. &#268;lenstv&iacute; a&#382; kdy&#382; bude d&aacute;vat smysl.</h2>
+            <p>Produkt stav&iacute;me jako jednoduch&yacute; self-serve web: z&aacute;klad zdarma, placen&yacute; report a pozd&#283;ji &#353;koln&iacute; licence.</p>
+          </div>
+          <div className="pricing-panel">
+            <small>Beta cena reportu</small>
+            <strong>149 K&#269;</strong>
+            <p>Jednor&aacute;zov&yacute; PDF report s top profesemi, &#353;kolami k ov&#283;&#345;en&iacute; a ak&#269;n&iacute;m pl&aacute;nem. Platbu napoj&iacute;me a&#382; po ov&#283;&#345;en&iacute; popt&aacute;vky.</p>
+            <form
+              className="lead-form"
+              onSubmit={(event) => {
+                event.preventDefault()
+                onLeadSubmit()
+              }}
+            >
+              <label className="field">
+                <span>Jm&eacute;no</span>
+                <input
+                  value={leadForm.name}
+                  onChange={(event) => onLeadFieldChange('name', event.target.value)}
+                  placeholder="Jan Novak"
+                  autoComplete="name"
+                />
+              </label>
+              <label className="field">
+                <span>E-mail</span>
+                <input
+                  type="email"
+                  value={leadForm.email}
+                  onChange={(event) => onLeadFieldChange('email', event.target.value)}
+                  placeholder="jan@skola.cz"
+                  autoComplete="email"
+                />
+              </label>
+              <label className="field">
+                <span>Kdo jsi?</span>
+                <input
+                  value={leadForm.role}
+                  onChange={(event) => onLeadFieldChange('role', event.target.value)}
+                  placeholder="rodi&#269;, student, poradce..."
+                />
+              </label>
+              <label className="field">
+                <span>Pozn&aacute;mka</span>
+                <textarea
+                  value={leadForm.note}
+                  onChange={(event) => onLeadFieldChange('note', event.target.value)}
+                  placeholder="Co chce&#353; otestovat nebo pro koho report pot&#345;ebuje&#353;?"
+                  rows={3}
+                />
+              </label>
+              {leadStatus === 'sent' ? <strong className="lead-success">Hotovo. Ozvu se s beta p&#345;&iacute;stupem.</strong> : null}
+              {leadStatus === 'error' ? <strong className="lead-error">Vypl&#328; pros&iacute;m jm&eacute;no a platn&yacute; e-mail.</strong> : null}
+              <button className="primary-button wide" type="submit" disabled={leadStatus === 'submitting'}>
+                {leadStatus === 'submitting' ? 'Odes&iacute;l&aacute;m...' : 'Chci testovat betu'}
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <aside className="access-panel consumer-access-panel" id="pilot-access" aria-label="Beta pristup">
           <span className="brand-mark access-mark">
             <LockKey size={24} weight="duotone" />
           </span>
-          <p className="eyebrow">Vstup pro zapojené školy</p>
-          <h2>Pracovní plocha je chráněná pilotním kódem.</h2>
-          <p>Nepoužívej reálná citlivá data žáků, dokud nemá škola odsouhlasené interní pravidla práce s daty.</p>
+          <p className="eyebrow">Beta vstup</p>
+          <h2>Intern&iacute; pracovn&iacute; plocha je zat&iacute;m chr&aacute;n&#283;n&aacute; pilotn&iacute;m k&oacute;dem.</h2>
+          <p>Do ve&#345;ejn&eacute; bety zat&iacute;m pou&#353;t&#283;j jen testovac&iacute; profily. Nepou&#382;&iacute;vej re&aacute;ln&aacute; citliv&aacute; data &#382;&aacute;k&#367;.</p>
           <form
             className="access-form"
             onSubmit={(event) => {
@@ -1346,61 +1570,19 @@ function PilotAccessGate({
             }}
           >
             <label className="field">
-              <span>Pilotní kód</span>
+              <span>Pilotn&iacute; k&oacute;d</span>
               <input value={accessCode} onChange={(event) => onAccessCodeChange(event.target.value)} autoFocus />
             </label>
             {accessError ? <strong className="access-error">{accessError}</strong> : null}
             <button className="primary-button wide" type="submit">
-              Vstoupit do pilotu
+              Vstoupit do aplikace
             </button>
           </form>
           <a className="sample-link" href="/api/reports/sample.pdf" target="_blank" rel="noreferrer">
-            Otevřít anonymní ukázkový PDF report
+            Otev&#345;&iacute;t anonymn&iacute; uk&aacute;zkov&yacute; PDF report
             <ArrowSquareOut size={14} />
           </a>
         </aside>
-
-        <section className="pilot-offer-grid" aria-label="Nabídka pro školy">
-          <article>
-            <CheckCircle size={19} weight="fill" />
-            <h3>Pro kariérové poradce</h3>
-            <p>Rychlé porovnání profesních cest podle zájmu, mzdy, vzdělání, regionu a rizik.</p>
-          </article>
-          <article>
-            <Buildings size={19} weight="duotone" />
-            <h3>Pro vedení školy</h3>
-            <p>Pilotní licence za 9 900 Kč ročně, 60 reportů, evaluace po 8 týdnech a jasný výstup pro rodiče.</p>
-          </article>
-          <article>
-            <SealCheck size={19} weight="duotone" />
-            <h3>Pro zřizovatele</h3>
-            <p>Přehled profesních mezer podle kraje a opora pro spolupráci škol, firem a poradenských služeb.</p>
-          </article>
-        </section>
-
-        <section className="public-guide" aria-label="Jak pilot probíhá">
-          <div>
-            <p className="eyebrow">Jak to škola použije</p>
-            <h2>Jednoduchý postup pro první pilotní hodinu</h2>
-          </div>
-          <ol>
-            <li>
-              <span>01</span>
-              <strong>Poradce zadá anonymní profil žáka</strong>
-              <small>Bez rodného čísla, adresy nebo citlivých osobních dat.</small>
-            </li>
-            <li>
-              <span>02</span>
-              <strong>Aplikace seřadí vhodné profesní cesty</strong>
-              <small>Výsledek kombinuje zájem, region, vzdělání, mzdu a dostupná data trhu práce.</small>
-            </li>
-            <li>
-              <span>03</span>
-              <strong>Škola uloží případ a stáhne PDF</strong>
-              <small>Report je připravený pro schůzku s rodiči nebo pro další práci poradce.</small>
-            </li>
-          </ol>
-        </section>
       </section>
     </main>
   )

@@ -39,6 +39,14 @@ const loginSchema = z.object({
   code: z.string().min(1),
 })
 
+const leadSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.string().trim().email().max(180),
+  role: z.string().trim().max(120).optional().default(''),
+  note: z.string().trim().max(700).optional().default(''),
+  source: z.string().trim().max(80).optional().default('landing'),
+})
+
 const app = express()
 const portSource = process.env.PORT ?? process.env.RAILWAY_TCP_PROXY_PORT ?? process.env.REPORT_PORT ?? '8787'
 const parsedPort = Number(portSource)
@@ -54,6 +62,7 @@ const storageRoot = path.resolve(process.env.REPORT_STORAGE_DIR ?? path.resolve(
 const reportRoot = path.resolve(storageRoot, 'reports')
 const auditPath = path.resolve(storageRoot, 'report-audit.jsonl')
 const casesPath = path.resolve(storageRoot, 'cases.json')
+const leadsPath = path.resolve(storageRoot, 'leads.jsonl')
 const allowedOrigins = (process.env.CORS_ORIGIN ?? '')
   .split(',')
   .map((origin) => origin.trim())
@@ -235,6 +244,19 @@ async function readReportCount() {
   }
 }
 
+async function readLeads() {
+  try {
+    const raw = await readFile(leadsPath, 'utf8')
+    return raw
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as unknown)
+  } catch {
+    return []
+  }
+}
+
 function buildSampleReportPayload(): ReportPayload {
   const profile = {
     ...defaultProfile,
@@ -279,7 +301,7 @@ app.get('/favicon.ico', (_request, response) => {
 })
 
 app.get('/api/status', async (_request, response) => {
-  const [cases, storageWritable, reportCount] = await Promise.all([readCases(), checkStorageWritable(), readReportCount()])
+  const [cases, leads, storageWritable, reportCount] = await Promise.all([readCases(), readLeads(), checkStorageWritable(), readReportCount()])
 
   response.json({
     ok: true,
@@ -287,6 +309,7 @@ app.get('/api/status', async (_request, response) => {
     storageWritable,
     storageConfigured: Boolean(process.env.REPORT_STORAGE_DIR),
     caseCount: cases.length,
+    leadCount: leads.length,
     reportCount,
     runtime: {
       host,
@@ -318,6 +341,33 @@ app.post('/api/auth/login', (request, response) => {
 app.post('/api/auth/logout', (_request, response) => {
   clearPilotSessionCookie(response)
   response.json({ authenticated: false })
+})
+
+app.post('/api/leads', async (request, response) => {
+  const parsed = leadSchema.safeParse(request.body)
+
+  if (!parsed.success) {
+    response.status(400).json({ error: 'Invalid lead payload', issues: parsed.error.issues })
+    return
+  }
+
+  const lead = {
+    id: `lead-${randomUUID().slice(0, 10)}`,
+    createdAt: new Date().toISOString(),
+    ...parsed.data,
+    userAgent: request.headers['user-agent'] ?? null,
+    referer: request.headers.referer ?? null,
+  }
+
+  await mkdir(storageRoot, { recursive: true })
+  await appendFile(leadsPath, `${JSON.stringify(lead)}\n`, 'utf8')
+
+  response.status(201).json({ lead: { id: lead.id, createdAt: lead.createdAt } })
+})
+
+app.get('/api/leads', requirePilotAccess, async (_request, response) => {
+  const leads = await readLeads()
+  response.json({ leads: leads.slice(-200).reverse() })
 })
 
 app.get('/api/cases', requirePilotAccess, async (_request, response) => {
