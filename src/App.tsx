@@ -1511,6 +1511,7 @@ function PilotAccessGate({
     salaryGoal: 38000,
   })
   const demoMatches = useMemo(() => scoreCareers(demoProfile, careers).slice(0, 3), [demoProfile])
+  const popularCareerPages = useMemo(() => [...careers].sort((left, right) => right.demandScore - left.demandScore).slice(0, 12), [])
 
   useEffect(() => {
     trackPublicEvent('page_view')
@@ -1719,6 +1720,24 @@ function PilotAccessGate({
               <small>V&yacute;stup se d&aacute; vz&iacute;t na sch&#367;zku s rodi&#269;i, poradcem nebo pou&#382;&iacute;t jako vlastn&iacute; pl&aacute;n.</small>
             </li>
           </ol>
+        </section>
+
+        <section className="consumer-career-links" aria-label="Popularni profese">
+          <div>
+            <p className="eyebrow">Profesní stránky</p>
+            <h2>Nejhledanější cesty, které můžou přivést organický traffic.</h2>
+            <p>Tyto veřejné stránky jsou připravené pro Google a Seznam. Každá vede zpět do dema a placeného reportu.</p>
+          </div>
+          <div className="career-link-grid">
+            {popularCareerPages.map((career) => (
+              <a href={`/profese/${career.id}/`} key={career.id} onClick={() => trackPublicEvent('profession_page_click', { careerId: career.id })}>
+                <strong>{career.title}</strong>
+                <small>
+                  {formatCurrency(career.monthlyPay)} / poptavka {career.demandScore}
+                </small>
+              </a>
+            ))}
+          </div>
         </section>
 
         <section className="consumer-pricing" id="pricing" aria-label="Cena reportu">

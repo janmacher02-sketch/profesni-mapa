@@ -2710,6 +2710,7 @@ textarea {
 }
 
 .consumer-steps,
+.consumer-career-links,
 .consumer-pricing,
 .consumer-access-panel {
   margin-top: 14px;
@@ -2727,6 +2728,7 @@ textarea {
 }
 
 .consumer-steps h2,
+.consumer-career-links h2,
 .consumer-pricing h2,
 .consumer-access-panel h2 {
   margin: 8px 0 0;
@@ -2782,6 +2784,61 @@ textarea {
   color: #64716c;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.consumer-career-links {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.consumer-career-links > div > p:not(.eyebrow) {
+  margin: 12px 0 0;
+  color: #5c6965;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.career-link-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.career-link-grid a {
+  min-width: 0;
+  border: 1px solid rgba(220, 229, 223, 0.92);
+  border-radius: 18px;
+  background: #fbfefd;
+  color: var(--ink);
+  padding: 14px;
+  text-decoration: none;
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.career-link-grid a:hover {
+  border-color: rgba(0, 104, 95, 0.3);
+  background: var(--surface);
+  transform: translateY(-1px);
+}
+
+.career-link-grid strong,
+.career-link-grid small {
+  display: block;
+}
+
+.career-link-grid strong {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.career-link-grid small {
+  margin-top: 7px;
+  color: #64716c;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .consumer-pricing {
@@ -2900,6 +2957,7 @@ textarea {
   .consumer-demo,
   .consumer-grid,
   .consumer-steps,
+  .consumer-career-links,
   .consumer-pricing {
     grid-template-columns: 1fr;
   }
@@ -2910,6 +2968,10 @@ textarea {
 
   .consumer-steps ol {
     grid-template-columns: 1fr;
+  }
+
+  .career-link-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -2943,9 +3005,14 @@ textarea {
 
   .consumer-feature,
   .consumer-steps,
+  .consumer-career-links,
   .consumer-pricing,
   .consumer-access-panel {
     border-radius: 22px;
     padding: 20px;
+  }
+
+  .career-link-grid {
+    grid-template-columns: 1fr;
   }
 }

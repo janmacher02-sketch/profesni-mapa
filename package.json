@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "seo:build": "node scripts/generateSeoAssets.mjs",
+    "prebuild": "npm run seo:build",
     "data:mpsv": "node scripts/importMpsvSignals.mjs",
     "mcp:build": "tsc -p tsconfig.mcp.json",
     "mcp:start": "node build/mcp/mcpServer.js",
