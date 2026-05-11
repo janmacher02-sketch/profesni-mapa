@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "seo:build": "node scripts/generateSeoAssets.mjs",
+    "seo:indexnow": "node scripts/submitIndexNow.mjs",
     "prebuild": "npm run seo:build",
     "data:mpsv": "node scripts/importMpsvSignals.mjs",
     "mcp:build": "tsc -p tsconfig.mcp.json",
