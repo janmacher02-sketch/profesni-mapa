@@ -1855,6 +1855,21 @@ function PilotAccessGate({
             <ArrowSquareOut size={14} />
           </a>
         </aside>
+
+        <footer className="consumer-footer-links" aria-label="Produktove informace">
+          <a href="/navod/" onClick={() => trackPublicEvent('footer_link_click', { target: 'navod' })}>
+            Jak to pou&#382;&iacute;t
+          </a>
+          <a href="/soukromi/" onClick={() => trackPublicEvent('footer_link_click', { target: 'soukromi' })}>
+            Soukrom&iacute; a data
+          </a>
+          <a href="/podminky/" onClick={() => trackPublicEvent('footer_link_click', { target: 'podminky' })}>
+            Podm&iacute;nky pilotu
+          </a>
+          <a href="/sitemap.xml" onClick={() => trackPublicEvent('footer_link_click', { target: 'sitemap' })}>
+            Sitemap
+          </a>
+        </footer>
       </section>
     </main>
   )

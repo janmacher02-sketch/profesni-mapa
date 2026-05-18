@@ -151,6 +151,63 @@ const guidePages = [
   },
 ]
 
+const staticPages = [
+  {
+    slug: 'navod',
+    title: 'Jak používat Profesní mapu',
+    description: 'Jednoduchý návod pro rodiče, žáky a školy: jak projít demo, porovnat profese a kdy dává smysl PDF report.',
+    eyebrow: 'Rychlý návod',
+    intro:
+      'Profesní mapa není jen test osobnosti. Pomáhá udělat první rozumný výběr profese podle zájmů, kraje, délky přípravy, mzdy, rizik a dostupných školních oborů.',
+    sections: [
+      ['1. Vyplň základní profil', 'Začni krajem, zájmem, ochotou studovat, mzdovým očekáváním a tím, jestli žák chce spíš práci rukama, techniku, služby nebo práci s lidmi. Nepoužívej citlivá osobní data.'],
+      ['2. Porovnej první tři doporučení', 'Neber první výsledek jako verdikt. Podívej se na top tři profese, mzdu, délku přípravy, rizika a důvod, proč profese vyšla vysoko.'],
+      ['3. Ověř školu a obor', 'U každé profese zkontroluj navázaný obor, dostupnost školy v kraji, praxi, dojezd a požadavky. Profesní mapa má rozhodování zrychlit, ne nahradit poradce.'],
+      ['4. Vygeneruj PDF report', 'Report použij jako podklad pro rodičovskou schůzku, kariérové poradenství nebo domácí rozhodnutí. V pilotu pracuj s anonymním profilem žáka.'],
+    ],
+    ctaTitle: 'Chceš si to projít na reálném příkladu?',
+    ctaText: 'Otevři demo, změň kraj a zájem a sleduj, jak se mění doporučené profese.',
+    ctaHref: '/#demo',
+    ctaLabel: 'Spustit demo',
+  },
+  {
+    slug: 'soukromi',
+    title: 'Soukromí a práce s daty',
+    description: 'Jak Profesní mapa pracuje s daty v pilotním provozu a proč se v demu nemají používat citlivé údaje žáků.',
+    eyebrow: 'Soukromí',
+    intro:
+      'Pilotní verze je navržená tak, aby šlo produkt testovat bez rodných čísel, adres, zdravotních údajů a dalších citlivých informací. Pro školní provoz je nutné nastavit interní pravidla práce s daty.',
+    sections: [
+      ['Co aplikace potřebuje', 'Pro doporučení stačí anonymní profil: zájmy, kraj, preference práce, délka přípravy, orientační mzdový cíl a poznámka poradce.'],
+      ['Co do aplikace nepatří', 'V pilotu nepoužívej rodná čísla, detailní adresy, zdravotní dokumentaci, rodinnou situaci ani jiné citlivé údaje, které nejsou nutné pro výběr profese.'],
+      ['PDF reporty a audit', 'Serverový PDF export zapisuje auditní záznam o vytvoření reportu. Škola by měla před ostrým provozem určit, kdo reporty vytváří, kde se uchovávají a kdy se mažou.'],
+      ['Analytika', 'Veřejná landing page ukládá základní události typu otevření stránky, klik na ukázkový PDF report nebo odeslání formuláře. Slouží k ověření zájmu o produkt.'],
+    ],
+    ctaTitle: 'Pro školní pilot používej anonymní data.',
+    ctaText: 'Než produkt pustíš do reálné školy, nastav pravidla pro ukládání reportů a práci poradce s daty.',
+    ctaHref: '/#pilot-access',
+    ctaLabel: 'Otevřít pilotní vstup',
+  },
+  {
+    slug: 'podminky',
+    title: 'Podmínky pilotního provozu',
+    description: 'Základní pravidla pilotního provozu Profesní mapy pro školy, poradce, rodiče a testery.',
+    eyebrow: 'Pilotní provoz',
+    intro:
+      'Profesní mapa je v pilotní fázi. Výstupy jsou rozhodovací pomůcka, ne závazné kariérové doporučení, právní rada ani garantované mzdové či školní údaje.',
+    sections: [
+      ['Orientační charakter výstupů', 'Mzdy, poptávka, školní obory a regionální signály je nutné ověřit před podáním přihlášky nebo zásadním rozhodnutím. Data se mohou měnit.'],
+      ['Role školy a poradce', 'Poradce používá report jako podklad pro rozhovor se žákem a rodičem. Finální rozhodnutí musí zohlednit situaci žáka, školu, dojezd, praxi a aktuální podmínky přijímacího řízení.'],
+      ['Pilotní licence', 'Pilotní balíček je určený pro omezený počet škol, anonymní testování a sběr zpětné vazby. Rozsah reportů, počet poradců a cena se mohou před ostrou verzí změnit.'],
+      ['Odpovědnost za ověření', 'Uživatel bere na vědomí, že Profesní mapa nenahrazuje oficiální zdroje škol, MŠMT, Infoabsolvent, Úřad práce ani přímé ověření u konkrétní školy nebo zaměstnavatele.'],
+    ],
+    ctaTitle: 'Chceš ověřit, jestli produkt dává smysl?',
+    ctaText: 'Vyplň beta formulář nebo otevři ukázkový report a otestuj výstup bez citlivých údajů.',
+    ctaHref: '/#pricing',
+    ctaLabel: 'Zobrazit nabídku',
+  },
+]
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -492,6 +549,49 @@ ${page.sections
   })
 }
 
+function staticPageHtml(page) {
+  const canonical = `${siteUrl}/${page.slug}/`
+  const body = `<section class="hero">
+  <span class="eyebrow">${escapeHtml(page.eyebrow)}</span>
+  <h1>${escapeHtml(page.title)}</h1>
+  <p>${escapeHtml(page.intro)}</p>
+  <div class="actions">
+    <a class="button" href="${escapeHtml(page.ctaHref)}">${escapeHtml(page.ctaLabel)}</a>
+    <a class="button secondary" href="/api/reports/sample.pdf">Ukázkový PDF report</a>
+  </div>
+</section>
+${page.sections
+  .map(
+    ([heading, text]) => `<section class="content-card">
+  <h2>${escapeHtml(heading)}</h2>
+  <p>${escapeHtml(text)}</p>
+</section>`,
+  )
+  .join('\n')}
+<section class="cta">
+  <div>
+    <h2>${escapeHtml(page.ctaTitle)}</h2>
+    <p>${escapeHtml(page.ctaText)}</p>
+  </div>
+  <a class="button" href="${escapeHtml(page.ctaHref)}">${escapeHtml(page.ctaLabel)}</a>
+</section>`
+
+  return pageShell({
+    title: `${page.title} | Profesní mapa`,
+    description: page.description,
+    canonical,
+    body,
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: page.title,
+      description: page.description,
+      publisher: { '@type': 'Organization', name: 'Profesní mapa' },
+      mainEntityOfPage: canonical,
+    },
+  })
+}
+
 function comparisonHtml(left, right) {
   const slug = `${left.id}-vs-${right.id}`
   const canonical = `${siteUrl}/srovnani/${slug}/`
@@ -592,6 +692,13 @@ for (const [index, page] of guidePages.entries()) {
   urls.push({ loc: `${siteUrl}/pruvodce/${page.slug}/`, priority: '0.75', changefreq: 'monthly' })
 }
 
+for (const page of staticPages) {
+  const dir = path.resolve(publicRoot, page.slug)
+  await mkdir(dir, { recursive: true })
+  await writeFile(path.resolve(dir, 'index.html'), staticPageHtml(page), 'utf8')
+  urls.push({ loc: `${siteUrl}/${page.slug}/`, priority: '0.7', changefreq: 'monthly' })
+}
+
 for (const [left, right] of comparisonPairs) {
   const comparison = comparisonHtml(left, right)
   const dir = path.resolve(comparisonRoot, comparison.slug)
@@ -642,4 +749,4 @@ await writeFile(
   'utf8',
 )
 
-console.log(`Generated ${careers.length} profession pages, ${regionalPageCount} regional pages, ${guidePages.length} guides, ${comparisonPairs.length} comparisons and sitemap.xml`)
+console.log(`Generated ${careers.length} profession pages, ${regionalPageCount} regional pages, ${guidePages.length} guides, ${staticPages.length} static pages, ${comparisonPairs.length} comparisons and sitemap.xml`)
