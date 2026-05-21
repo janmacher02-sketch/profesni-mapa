@@ -52,14 +52,13 @@ npm run seo:indexnow
 
 ### Google Search Console
 
-Vyzaduje prihlaseny Google ucet ve stejne browser session.
+Hotovo 2026-05-21:
 
-Postup:
+- URL prefix property: `https://profesni-mapa.vercel.app/`
+- Overeni vlastnictvi: HTML soubor `googleaa0e2bdae7d8057d.html`
+- Sitemap odeslana: `sitemap.xml`
 
-1. Otevrit https://search.google.com/search-console/welcome
-2. Pridat URL prefix: `https://profesni-mapa.vercel.app/`
-3. Pokud Google vyzada overeni, pridat jeho HTML soubor nebo meta tag do projektu.
-4. Po overeni pridat sitemap: `sitemap.xml`
+Poznamka: rucni pozadavek na indexaci homepage v Search Console vratil denni limit uctu. To neblokuje zpracovani sitemap; Google ji bude zpracovavat automaticky.
 
 ### Vlastni domena
 
